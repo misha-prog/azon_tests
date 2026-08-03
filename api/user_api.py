@@ -2,6 +2,7 @@ from config.hosts import AUTH_URL
 from requester.custom_requester import CustomRequester
 
 class UserAPI(CustomRequester):
+    """API для получения и обновления инфорации о пользователе"""
     ME_ENDPOINT = "/api/v1/users/me"
 
     def __init__(self, session):

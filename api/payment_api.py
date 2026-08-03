@@ -3,6 +3,7 @@ from requester.custom_requester import CustomRequester
 
 
 class PaymentAPI(CustomRequester):
+    """Класс для получения инфорации о корзине"""
     ORDERS_ENDPOINT = "/api/v1/orders"
 
     def __init__(self, session):

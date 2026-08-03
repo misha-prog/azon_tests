@@ -1,5 +1,7 @@
-from utils.data_generator import DataGenerator
+import os
 
+from utils.data_generator import DataGenerator
+from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
 class UserData:
 
     @staticmethod
@@ -8,6 +10,24 @@ class UserData:
             "email": DataGenerator.generate_email(),
             "password": DataGenerator.generate_password(),
             "full_name": DataGenerator.generate_full_name(),
+        }
+
+    @staticmethod
+    def registration_data_admin() -> dict:
+        return {
+            "email": DataGenerator.generate_email(),
+            "password": DataGenerator.generate_password(),
+            "full_name": DataGenerator.generate_full_name(),
+            "invite_code": os.getenv("INVITE_CODE_ADMIN"),
+        }
+
+    @staticmethod
+    def registration_data_manager() -> dict:
+        return {
+            "email": DataGenerator.generate_email(),
+            "password": DataGenerator.generate_password(),
+            "full_name": DataGenerator.generate_full_name(),
+            "invite_code": os.getenv("INVITE_CODE_MANAGER"),
         }
 
     @staticmethod

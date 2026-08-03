@@ -17,3 +17,23 @@ class DataGenerator:
     @staticmethod
     def generate_full_name():
         return fake.name()
+
+    @staticmethod
+    def generate_name_of_product():
+        return fake.word().capitalize()
+
+    @staticmethod
+    def generate_sku():
+        return fake.password(length=19, special_chars=False, upper_case=True, lower_case=True)
+
+    @staticmethod
+    def generate_description():
+        return fake.text(max_nb_chars=50)
+
+    @staticmethod
+    def generate_price():
+        return fake.random_int(min=500, max=100000)
+
+    @staticmethod
+    def generate_stock():
+        return fake.random_int(min=1, max=1000, step=10)

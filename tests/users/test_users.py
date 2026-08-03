@@ -36,3 +36,11 @@ class TestUsers:
         assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
 
         api_manager.auth_api.authenticate((authenticated_user["email"], "aboba123"))
+
+    def test_create_review(self, authenticated_user, api_manager):
+        products = api_manager.products_api.get_products()
+        product_id = products.json()["items"][0]["id"]
+        response = api_manager.products_api.create_review(product_id, 5, "aboba", 201)
+
+        assert response.json()["rating"] == 5
+        assert response.json()["text"] == "aboba"
