@@ -1,6 +1,24 @@
+# настройки IDE и системные файлы
+.DS_Store
+.vscode/
 .venv/
+/venv/
 __pycache__/
 *.pyc
 .idea/
 .pytest_cache/
 *.log
+
+# секреты
+.env
+secrets_local.py
+
+# отчёты о прогонах
+allure-results/
+report.html
+
+
+*.db
+*.xlsx
+*.csv
+*.env
