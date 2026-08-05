@@ -29,13 +29,17 @@ class TestUsers:
 
     def test_change_password(self, api_manager, authenticated_user):
         user_data = authenticated_user
-        UserData.change_password_data(user_data, "aboba123")
+        password_update = UserData.change_password_data(user_data, "aboba123")
+        api_manager.user_api.change_password(password_update, expected_status=204)
 
         old_credentials = UserData.login_data(user_data)
         response = api_manager.auth_api.login_user(old_credentials, expected_status=401)
         assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
 
-        api_manager.auth_api.authenticate((authenticated_user["email"], "aboba123"))
+        new_pass_response = api_manager.auth_api.authenticate((authenticated_user["email"], "aboba123"))
+        assert "access_token" in new_pass_response.json(), (
+            f"Новый пароль не подошел и выдало ошибку: {new_pass_response.text}"
+        )
 
     def test_create_review(self, authenticated_user, api_manager):
         products = api_manager.products_api.get_products()

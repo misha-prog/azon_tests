@@ -1,10 +1,9 @@
-from requester.custom_requester import CustomRequester
 import pytest
 
 
 class TestPayment:
 
-    def test_check_bin(self, authorized_user, api_manager):
+    def test_check_bin(self, authenticated_user, api_manager):
         response = api_manager.payment_api.get_orders()
 
         assert response.json()["total"] == 0

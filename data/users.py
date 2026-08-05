@@ -1,7 +1,6 @@
 import os
 
 from utils.data_generator import DataGenerator
-from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
 class UserData:
 
     @staticmethod

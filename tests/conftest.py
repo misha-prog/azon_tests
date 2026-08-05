@@ -5,7 +5,7 @@ import pytest
 from api.api_manager import ApiManager
 from data.products import ProductData
 from data.users import UserData
-
+from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
 
 @pytest.fixture(scope="session")
 def api_manager():

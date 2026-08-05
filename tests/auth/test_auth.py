@@ -12,7 +12,7 @@ class TestAuth:
 
         api_manager.auth_api.authenticate((user_data["email"], user_data["password"]))
 
-        me_response = api_manager.auth_api.get_me()
+        me_response = api_manager.user_api.get_user_info()
         assert me_response.json()["email"] == user_data["email"]
 
     def test_register_with_existing_email(self, api_manager, registered_user):
