@@ -4,6 +4,7 @@ from requester.custom_requester import CustomRequester
 
 class ProductsAPI(CustomRequester):
     PRODUCTS_ENDPOINT = "/api/v1/products"
+    CATEGORIES_ENDPOINT = "/api/v1/categories"
 
     def __init__(self, session):
         super().__init__(session, base_url=PRODUCT_URL)
@@ -21,6 +22,14 @@ class ProductsAPI(CustomRequester):
             "GET",
             f"{self.PRODUCTS_ENDPOINT}/{product_id}",
             expected_status=expected_status,
+        )
+
+    def get_categories(self, params=None, expected_status=200):
+        return self.send_request(
+            "GET",
+            self.CATEGORIES_ENDPOINT,
+            params=params,
+            expected_status=expected_status
         )
 
     def create_review(self, product_id, rating: int, text: str, expected_status=200):
@@ -51,5 +60,13 @@ class ProductsAPI(CustomRequester):
             "PATCH",
             f"{self.PRODUCTS_ENDPOINT}/{product_id}/price",
             json=new_price,
+            expected_status=expected_status,
+        )
+
+    def update_product(self, product_id, new_body, expected_status=200):
+        return self.send_request(
+            "PATCH",
+            f"{self.PRODUCTS_ENDPOINT}/{product_id}",
+            json=new_body,
             expected_status=expected_status,
         )

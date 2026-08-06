@@ -5,7 +5,8 @@ import pytest
 from api.api_manager import ApiManager
 from data.products import ProductData
 from data.users import UserData
-from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
+from utils.data_generator import DataGenerator
+
 
 @pytest.fixture(scope="session")
 def api_manager():
@@ -33,11 +34,9 @@ def authenticated_user(api_manager):
     return {**user_data, "id": register_response.json()["id"]}
 
 @pytest.fixture(scope="function")
-def created_product(api_manager, authenticated_admin):
+def created_product(api_manager, authenticated_admin, category_id):
     product = ProductData.create_full_product()
-    items_list = api_manager.products_api.get_products()
-    item_category = items_list.json()["items"][0]["category_id"]
-    product["category_id"] = item_category
+    product["category_id"] = category_id
     add_product = api_manager.products_api.create_product(product)
     created = add_product.json()
     product_id = created["id"]
@@ -57,3 +56,26 @@ def authenticated_admin(api_manager):
     register_response = api_manager.auth_api.register_user(user_data)
     api_manager.auth_api.authenticate((user_data["email"], user_data["password"]))
     return {**user_data, "id": register_response.json()["id"]}
+
+@pytest.fixture(scope="function")
+def new_body_product(api_manager):
+    name = DataGenerator.generate_name_of_product()
+    description = DataGenerator.generate_description()
+    stock = DataGenerator.generate_stock()
+    all_categories = api_manager.products_api.get_categories()
+    category_id = all_categories.json()[0]["id"]
+    return {"name": name, "description": description, "stock": stock, "category_id": category_id}
+
+@pytest.fixture(scope="function")
+def category_id(api_manager):
+    response = api_manager.products_api.get_categories(params={"size": 1})
+    data = response.json()
+
+    if isinstance(data, dict) and "items" in data:
+        categories = data["items"]
+    else:
+        categories = data
+
+    assert categories, "Не удалось получить категории"
+
+    return categories[0]["id"]

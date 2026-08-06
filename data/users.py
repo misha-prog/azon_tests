@@ -17,7 +17,7 @@ class UserData:
             "email": DataGenerator.generate_email(),
             "password": DataGenerator.generate_password(),
             "full_name": DataGenerator.generate_full_name(),
-            "invite_code": os.getenv("INVITE_CODE_ADMIN"),
+            "invite_code": os.getenv("ADMIN_INVITE_CODE"),
         }
 
     @staticmethod
@@ -26,7 +26,7 @@ class UserData:
             "email": DataGenerator.generate_email(),
             "password": DataGenerator.generate_password(),
             "full_name": DataGenerator.generate_full_name(),
-            "invite_code": os.getenv("INVITE_CODE_MANAGER"),
+            "invite_code": os.getenv("MANAGER_INVITE_CODE"),
         }
 
     @staticmethod

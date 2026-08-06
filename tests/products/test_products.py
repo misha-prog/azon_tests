@@ -22,17 +22,17 @@ class TestProductsPositive:
         for product in products:
             assert Decimal(product["price"]) >= 5000
 
-    def test_first_product_is_valid(self, api_manager):
-        response = api_manager.products_api.get_product("0169e2e8-f8bf-5a3a-9a38-26ec84db79ee")
+    def test_first_product_is_valid(self, api_manager, authenticated_user):
+        products_list = api_manager.products_api.get_products()
+        product_id = products_list.json()["items"][0]["id"]
+        response = api_manager.products_api.get_product(product_id)
 
-        assert response.json()["id"] == "0169e2e8-f8bf-5a3a-9a38-26ec84db79ee"
+        assert response.json()["id"] == product_id
 
     def test_get_product(self, api_manager, created_product):
         # Тест на получение только что созданного товара
         response = api_manager.products_api.get_products()
-        created_product["category_id"] = response.json()["items"][0]["category_id"]
-        add_product = created_product
-        product_id = add_product["id"]
+        product_id = created_product["id"]
 
         response_id = api_manager.products_api.get_product(product_id)
 
@@ -56,7 +56,7 @@ class TestProductsPositive:
             # Проверяем что все товары из выбранной категории
             assert item["category_id"] == first_item["category_id"], (
                 f"Попался товар не из той категории которой мы хотели, "
-                f"а товар этот : {item[item]}"
+                f"а товар этот : {item}"
             )
 
     def test_max_price_product(self, api_manager, authenticated_user):
@@ -79,12 +79,10 @@ class TestProductsPositive:
             f"Данные не совпали с ответом и выдало : {product_create.text}"
         )
 
-    def test_created_product_can_be_deleted(self, api_manager, authenticated_admin):
+    def test_created_product_can_be_deleted(self, api_manager, authenticated_admin, category_id):
         # Проверка на то что можем удалить товар, который создали
         product = ProductData.create_full_product()
-        products_list = api_manager.products_api.get_products()
-        product_category_id = products_list.json()["items"][0]["category_id"]
-        product["category_id"] = product_category_id
+        product["category_id"] = category_id
 
         response = api_manager.products_api.create_product(product)
         product_id = response.json()["id"]
@@ -93,13 +91,15 @@ class TestProductsPositive:
         api_manager.products_api.delete_product(product_id=product_id)
         # Удаляем только что созданный объект
 
-        assert api_manager.products_api.get_product(product_id)
+        is_accessible = api_manager.products_api.get_product(product_id)
+        assert is_accessible.json()["is_available"] == False, (
+            f"Проверяли, что товар недоступен, но получили "
+            f"{is_accessible.text}"
+        )
 
-    def test_update_price(self, api_manager, authenticated_admin):
+    def test_update_price(self, api_manager, authenticated_admin, category_id):
         product = ProductData.create_full_product()
-        products_list = api_manager.products_api.get_products()
-        product_category_id = products_list.json()["items"][0]["category_id"]
-        product["category_id"] = product_category_id
+        product["category_id"] = category_id
 
         response = api_manager.products_api.create_product(product)
         product_id = response.json()["id"]
@@ -110,6 +110,15 @@ class TestProductsPositive:
         assert float(updated_product_price.json()["price"]) == 99999.00, (
             f"Проверяли что новая цена применилась к товару, "
             f"но этого не произошло и получили цену : {updated_product_price.json()["price"]}"
+        )
+
+    def test_update_product(self, api_manager, authenticated_admin, created_product, new_body_product):
+        product_id = created_product["id"]
+        response = api_manager.products_api.update_product(product_id, new_body_product)
+
+        assert response.json()["name"] == new_body_product["name"], (
+            f"Обновили продукт новыми данными но не получилось, "
+            f"и выдало ошибку {response.text}"
         )
 
 
@@ -123,13 +132,12 @@ class TestProductsNegative:
             f"с выдуманным айди, но север выдал ошибку такую : {response.text}"
         )
 
-    def test_access_to_create_product_without_access(self, api_manager, authenticated_user):
+    def test_access_to_create_product_without_access(self, api_manager, authenticated_user, category_id):
         # Создаем шаблон продукта для дальнейшей его выгрузки на сервер
         product = ProductData.create_full_product()
         products_list = api_manager.products_api.get_products()
 
         # Присваиваем нашему продукту существующий айди категории
-        category_id = products_list.json()["items"][0]["category_id"]
         product["category_id"] = category_id
 
         response = api_manager.products_api.create_product(product, 403)
@@ -141,8 +149,12 @@ class TestProductsNegative:
 
     def test_delete_seed_product(self, api_manager, authenticated_admin):
         # Смотрим на все товары и выбираем первый для удаления
-        products_list = api_manager.products_api.get_products(params={"is_seed": True})
-        product = products_list.json()["items"][0]
+        products_list = api_manager.products_api.get_products()
+        product = dict()
+        for item in products_list.json()["items"]:
+            if item["is_seed"] == True:
+                product = item
+                break
 
         # Пытаемся удалить seed-товар в роли админа
         response = api_manager.products_api.delete_product(product["id"], 403)
@@ -160,11 +172,9 @@ class TestProductsNegative:
             f"ожидали увидеть непустой список, а получили {response.text}"
         )
 
-    def test_invalid_body_of_product(self, api_manager, authenticated_admin):
+    def test_invalid_body_of_product(self, api_manager, authenticated_admin, category_id):
         # Тут создали обычный товар
         product = ProductData.create_full_product()
-        products_list = api_manager.products_api.get_products()
-        category_id = products_list.json()["items"][0]["category_id"]
         product["category_id"] = category_id
 
         # А тут уже задаем неправильный параметр в тело
@@ -175,4 +185,36 @@ class TestProductsNegative:
         assert "detail" in response.json(), (
             f"Ожидали увидеть стандартный ответ FastAPI, "
             f"но получили : {response.text}"
+        )
+
+    def test_create_product_without_token(self, api_manager, category_id):
+        product = ProductData.create_full_product()
+        product["category_id"] = category_id
+
+        response = api_manager.products_api.create_product(product, 401)
+        assert response.json(), (
+            f"Пытались создать товар без токена вообще и ожидали код ошибки 401,  "
+            f"но получили ошибку : {response.text}"
+        )
+
+    def test_create_product_with_invalid_category(self, api_manager):
+        product = ProductData.create_full_product()
+        product["category_id"] = str(uuid.uuid4())
+
+        response = api_manager.products_api.create_product(product, 404)
+
+        assert response.json()["error"]["code"] == "CATEGORY_NOT_FOUND", (
+            f"Создали товар с неверной категорией и ожидали ошибку, "
+            f"что категория не найдена, но получили : {response.text}"
+        )
+
+    def test_change_price_by_manager(self, api_manager, authenticated_manager):
+        products = api_manager.products_api.get_products()
+        product_id = products.json()["items"][0]["id"]
+
+        response = api_manager.products_api.update_price(product_id, 10000, 403)
+
+        assert "error" in response.json(), (
+            f"Ждали ошибку о том что менеджер не может обновить цену,"
+            f"но получили следующее сообщение : {response.text}"
         )
