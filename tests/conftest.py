@@ -92,3 +92,11 @@ def category_id(api_manager):
     assert categories, "Не удалось получить категории"
 
     return categories[0]["id"]
+
+
+@pytest.mark.smoke
+def test_health(api_manager):
+    ...
+@pytest.mark.skip(reason="AZON-101: экспорт каталока в CSV еще не реализован")
+def test_export_catalog_to_csv():
+    assert False

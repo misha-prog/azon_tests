@@ -1,4 +1,5 @@
 import uuid
+import pytest
 from decimal import Decimal
 
 from data.products import ProductData
@@ -22,7 +23,8 @@ class TestProductsPositive:
         for product in products:
             assert Decimal(product["price"]) >= 5000
 
-    def test_first_product_is_valid(self, api_manager, authenticated_user):
+    @pytest.mark.usefixtures("authenticated_user")
+    def test_first_product_is_valid(self, api_manager):
         products_list = api_manager.products_api.get_products()
         product_id = products_list.json()["items"][0]["id"]
         response = api_manager.products_api.get_product(product_id)
@@ -218,3 +220,13 @@ class TestProductsNegative:
             f"Ждали ошибку о том что менеджер не может обновить цену,"
             f"но получили следующее сообщение : {response.text}"
         )
+
+
+@pytest.mark.xfail(reason="AZON-142: фильтр in_stock=false не отбирает товары без остатка")
+def test_filter_out_of_stock(api_manager):
+    response = api_manager.products_api.get_products(
+        params={"in-stock": False, "size": 100}
+    )
+
+    items = response.json()["items"]
+    assert all(item["stock"] == 0 for item in items)

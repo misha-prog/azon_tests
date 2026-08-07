@@ -1,5 +1,7 @@
 from tests.conftest import authenticated_user
 from data.users import UserData
+import pytest
+pytestmark = [pytest.mark.users, pytest.mark.regression]
 
 class TestUsers:
 
