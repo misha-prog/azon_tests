@@ -197,7 +197,7 @@ class TestProductsNegative:
             f"но получили ошибку : {response.text}"
         )
 
-    def test_create_product_with_invalid_category(self, api_manager):
+    def test_create_product_with_invalid_category(self, api_manager, authenticated_admin):
         product = ProductData.create_full_product()
         product["category_id"] = str(uuid.uuid4())
 
@@ -212,7 +212,7 @@ class TestProductsNegative:
         products = api_manager.products_api.get_products()
         product_id = products.json()["items"][0]["id"]
 
-        response = api_manager.products_api.update_price(product_id, 10000, 403)
+        response = api_manager.products_api.update_price(product_id, "10000", 403)
 
         assert "error" in response.json(), (
             f"Ждали ошибку о том что менеджер не может обновить цену,"

@@ -1,6 +1,8 @@
 import os
 
 from utils.data_generator import DataGenerator
+from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
+
 class UserData:
 
     @staticmethod
@@ -17,7 +19,7 @@ class UserData:
             "email": DataGenerator.generate_email(),
             "password": DataGenerator.generate_password(),
             "full_name": DataGenerator.generate_full_name(),
-            "invite_code": os.getenv("ADMIN_INVITE_CODE"),
+            "invite_code": ADMIN_INVITE_CODE,
         }
 
     @staticmethod
@@ -26,7 +28,7 @@ class UserData:
             "email": DataGenerator.generate_email(),
             "password": DataGenerator.generate_password(),
             "full_name": DataGenerator.generate_full_name(),
-            "invite_code": os.getenv("MANAGER_INVITE_CODE"),
+            "invite_code": MANAGER_INVITE_CODE,
         }
 
     @staticmethod

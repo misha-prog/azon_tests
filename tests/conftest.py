@@ -6,6 +6,7 @@ from api.api_manager import ApiManager
 from data.products import ProductData
 from data.users import UserData
 from utils.data_generator import DataGenerator
+from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
 
 
 @pytest.fixture(scope="session")
@@ -47,6 +48,12 @@ def created_product(api_manager, authenticated_admin, category_id):
 def authenticated_manager(api_manager):
     user_data = UserData.registration_data_manager()
     register_response = api_manager.auth_api.register_user(user_data)
+
+    # Проверка на то что роль менеджера задалась
+    assert register_response.json()["role"] == "MANAGER", (
+        f"Инвайт-код не сработал, "
+        f" роль {register_response.json()['role']}, проверь .env")
+
     api_manager.auth_api.authenticate((user_data["email"], user_data["password"]))
     return {**user_data, "id": register_response.json()["id"]}
 
@@ -54,6 +61,12 @@ def authenticated_manager(api_manager):
 def authenticated_admin(api_manager):
     user_data = UserData.registration_data_admin()
     register_response = api_manager.auth_api.register_user(user_data)
+
+    # Проверка на то что роль менеджера задалась
+    assert register_response.json()["role"] == "ADMIN", (
+        f"Инвайт-код не сработал, "
+        f" роль {register_response.json()['role']}, проверь .env")
+
     api_manager.auth_api.authenticate((user_data["email"], user_data["password"]))
     return {**user_data, "id": register_response.json()["id"]}
 
