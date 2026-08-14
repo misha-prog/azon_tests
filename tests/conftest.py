@@ -5,8 +5,12 @@ import pytest
 from api.api_manager import ApiManager
 from data.products import ProductData
 from data.users import UserData
+from db.db_manager import DBManager
 from utils.data_generator import DataGenerator
 from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
+from models.users import RegisteredUser, UserResponse
+from models.products import ProductResponse
+from uuid import UUID
 
 
 @pytest.fixture(scope="session")
@@ -21,19 +25,38 @@ def clean_auth_header(api_manager):
     api_manager.auth_api.session.headers.pop("Authorization", None)
 
 @pytest.fixture
-def registered_user(api_manager):
-    user_data = UserData.registration_data()
-    response = api_manager.auth_api.register_user(user_data)
-    return {**user_data, "id": response.json()["id"]}
+def registered_user(api_manager) -> RegisteredUser:
+    registration = UserData.registration_data()
 
+    response = api_manager.auth_api.register_user(registration)
+
+    return RegisteredUser(
+        registration=registration, profile=UserResponse.model_validate(response.json())
+    )
+
+
+@pytest.fixture
+def created_product(admin_manager, category_id) -> ProductResponse:
+    product_request = ProductData.create_full_product(category_id)
+
+    response = admin_manager.products_api.create_product(product_request)
+    product = ProductResponse.model_validate(response.json())
+
+    yield product
+
+    try:
+        admin_manager.products_api.delete_product(product.id)
+    except AssertionError:
+        pass
 
 @pytest.fixture(scope="function")
 def authenticated_user(api_manager):
     user_data = UserData.registration_data()
     register_response = api_manager.auth_api.register_user(user_data)
-    api_manager.auth_api.authenticate((user_data["email"], user_data["password"]))
-    return {**user_data, "id": register_response.json()["id"]}
+    api_manager.auth_api.authenticate((user_data.email, user_data.password))
+    return {**user_data.model_dump(), "id": register_response.json()["id"]}
 
+'''
 @pytest.fixture(scope="function")
 def created_product(api_manager, authenticated_admin, category_id):
     product = ProductData.create_full_product()
@@ -43,6 +66,7 @@ def created_product(api_manager, authenticated_admin, category_id):
     product_id = created["id"]
     yield created
     api_manager.products_api.delete_product(product_id)
+'''
 
 @pytest.fixture(scope="function")
 def authenticated_manager(api_manager):
@@ -54,8 +78,8 @@ def authenticated_manager(api_manager):
         f"Инвайт-код не сработал, "
         f" роль {register_response.json()['role']}, проверь .env")
 
-    api_manager.auth_api.authenticate((user_data["email"], user_data["password"]))
-    return {**user_data, "id": register_response.json()["id"]}
+    api_manager.auth_api.authenticate((user_data.email, user_data.password))
+    return {**user_data.model_dump(), "id": register_response.json()["id"]}
 
 @pytest.fixture(scope="function")
 def authenticated_admin(api_manager):
@@ -67,8 +91,8 @@ def authenticated_admin(api_manager):
         f"Инвайт-код не сработал, "
         f" роль {register_response.json()['role']}, проверь .env")
 
-    api_manager.auth_api.authenticate((user_data["email"], user_data["password"]))
-    return {**user_data, "id": register_response.json()["id"]}
+    api_manager.auth_api.authenticate((user_data.email, user_data.password))
+    return {**user_data.model_dump(), "id": register_response.json()["id"]}
 
 @pytest.fixture(scope="function")
 def new_body_product(api_manager):
@@ -82,17 +106,8 @@ def new_body_product(api_manager):
 @pytest.fixture(scope="function")
 def category_id(api_manager):
     response = api_manager.products_api.get_categories(params={"size": 1})
-    data = response.json()
-
-    if isinstance(data, dict) and "items" in data:
-        categories = data["items"]
-    else:
-        categories = data
-
-    assert categories, "Не удалось получить категории"
-
-    return categories[0]["id"]
-
+    category_uuid = response.json()[0]["id"]
+    return UUID(category_uuid)
 
 @pytest.mark.smoke
 def test_health(api_manager):
@@ -100,3 +115,62 @@ def test_health(api_manager):
 @pytest.mark.skip(reason="AZON-101: экспорт каталока в CSV еще не реализован")
 def test_export_catalog_to_csv():
     assert False
+
+@pytest.fixture(autouse=True)
+def warn_about_slow(request):
+    if request.node.get_closest_marker("slow"):
+        print(f"\n[!] {request.node.name} помечен slow - готовьтесь ждать")
+
+def pytest_collection_modifyitems(items):
+    """Нет кода админа в .env - пропускаем всё, что просит админскую фикстуру."""
+    if ADMIN_INVITE_CODE:
+        return
+    skip_admin = pytest.mark.skip(reason="в .env нет ADMIN_INVITE_CODE")
+    for item in items:
+        if "authenticated_admin" in item.fixturenames:
+            item.add_marker(skip_admin)
+
+@pytest.fixture(scope="session")
+def db():
+    manager = DBManager()
+    yield manager
+    manager.close()
+
+@pytest.fixture
+def created_order(api_manager, authenticated_user, created_product):
+    """Заказ из одного товара: кладём товар в корзину и оформляем заказ."""
+    api_manager.cart_api.add_item(ProductData.cart_item_data(created_product.id))
+
+    response = api_manager.payment_api.checkout()
+    return response.json()
+
+@pytest.fixture(scope="function")
+def admin_manager():
+    session = requests.Session()
+    manager = ApiManager(session)
+
+    admin_data = UserData.registration_data_admin()
+    register_response = manager.auth_api.register_user(admin_data)
+
+    assert register_response.json()["role"] == "ADMIN", (
+        f"Инвайт-код не сработал, "
+        f"роль {register_response.json()['role']}, проверь .env"
+    )
+
+    manager.auth_api.authenticate(
+        (admin_data.email, admin_data.password)
+    )
+
+    yield manager
+
+    session.close()
+
+@pytest.fixture(scope="function")
+def db_guard(db):
+    before_tests = db.product.count_all_products()
+    yield before_tests
+    after_tests = db.product.count_all_products()
+    assert before_tests == after_tests, (
+        "Количество строк в базе данных"
+        "не совпало с тем, что было до тестов"
+    )

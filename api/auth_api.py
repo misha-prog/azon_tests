@@ -6,6 +6,7 @@ class AuthAPI(CustomRequester):
 
     REGISTER_ENDPOINT = "/api/v1/auth/register"
     LOGIN_ENDPOINT = "/api/v1/auth/login"
+    LOGOUT_ENDPOINT = "/api/v1/auth/logout"
 
     def __init__(self, session):
         super().__init__(session, base_url=AUTH_URL)
@@ -26,3 +27,8 @@ class AuthAPI(CustomRequester):
         token = response.json()["access_token"]
         self._update_session_headers(Authorization=f"Bearer {token}")
         return response
+
+    def logout(self, expected_status=204):
+        return self.send_request(
+            "POST", self.LOGOUT_ENDPOINT, expected_status=expected_status
+        )

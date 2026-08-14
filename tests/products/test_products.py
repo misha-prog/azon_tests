@@ -1,8 +1,13 @@
 import uuid
+
 import pytest
 from decimal import Decimal
+from pydantic import ValidationError
+from uuid import UUID
 
 from data.products import ProductData
+from models.products import ProductResponse, ProductsPage, ProductRequest
+
 
 class TestProductsPositive:
 
@@ -33,12 +38,12 @@ class TestProductsPositive:
 
     def test_get_product(self, api_manager, created_product):
         # Тест на получение только что созданного товара
-        response = api_manager.products_api.get_products()
-        product_id = created_product["id"]
-
+        product_id = created_product.id
         response_id = api_manager.products_api.get_product(product_id)
 
-        assert response_id.json()["id"] == product_id, (
+        product = ProductResponse.model_validate(response_id.json())
+
+        assert UUID(response_id.json()["id"]) == product_id, (
             f"Проверили что получили тот же товар что и отдали, "
             f"но что-то пошло не так и получили товар с айди: {product_id}"
         )
@@ -76,15 +81,18 @@ class TestProductsPositive:
 
     def test_created_product_accessible(self, api_manager, created_product):
         # Проверка на то что товар создается и данные совпадают с ответом
-        product_create = api_manager.products_api.get_product(created_product["id"])
-        assert created_product == product_create.json(), (
+        product_create = api_manager.products_api.get_product(created_product.id)
+
+        fetched_product = ProductResponse.model_validate(product_create.json())
+
+        assert created_product == fetched_product, (
             f"Данные не совпали с ответом и выдало : {product_create.text}"
         )
 
     def test_created_product_can_be_deleted(self, api_manager, authenticated_admin, category_id):
         # Проверка на то что можем удалить товар, который создали
-        product = ProductData.create_full_product()
-        product["category_id"] = category_id
+        product = ProductData.create_full_product(category_id)
+        product.category_id = category_id
 
         response = api_manager.products_api.create_product(product)
         product_id = response.json()["id"]
@@ -100,8 +108,8 @@ class TestProductsPositive:
         )
 
     def test_update_price(self, api_manager, authenticated_admin, category_id):
-        product = ProductData.create_full_product()
-        product["category_id"] = category_id
+        product = ProductData.create_full_product(category_id)
+        product.category_id = category_id
 
         response = api_manager.products_api.create_product(product)
         product_id = response.json()["id"]
@@ -115,7 +123,7 @@ class TestProductsPositive:
         )
 
     def test_update_product(self, api_manager, authenticated_admin, created_product, new_body_product):
-        product_id = created_product["id"]
+        product_id = created_product.id
         response = api_manager.products_api.update_product(product_id, new_body_product)
 
         assert response.json()["name"] == new_body_product["name"], (
@@ -123,6 +131,46 @@ class TestProductsPositive:
             f"и выдало ошибку {response.text}"
         )
 
+    @pytest.mark.usefixtures("authenticated_admin")
+    def test_create_product(self, category_id, api_manager):
+        product_request = ProductData.create_full_product(category_id)
+
+        response = api_manager.products_api.create_product(product_request)
+
+        product = ProductResponse.model_validate(response.json())
+        assert product.name == product_request.name
+        assert product.sku == product_request.sku
+        assert product.price == product_request.price
+        assert product.stock == product_request.stock
+        assert product.is_available is True
+
+    def test_get_created_product(self, api_manager, created_product):
+        response = api_manager.products_api.get_product(created_product.id)
+
+        assert ProductResponse.model_validate(response.json()) == created_product
+
+    def test_products_price_filter_1(self, api_manager):
+        response = api_manager.products_api.get_products(
+            params={"price_min": 5000, "size": 100}
+        )
+
+        page = ProductsPage.model_validate(response.json())
+        assert page.items, "Ожидали хотя бы один товар дороже 5000"
+        # price уже Decimal - руками ничего не приводим
+        assert all(product.price >= 5000 for product in page.items)
+
+    def test_model_reject_zero_price(self):
+        product_request = ProductData.create_full_product(uuid.uuid4())
+
+        with pytest.raises(ValidationError) as error:
+            ProductRequest.model_validate({**product_request.model_dump(), "price": 0})
+
+        assert error.value.errors()[0]["type"] == "greater_than"
+
+    @staticmethod
+    def product_with_invalid_price(category_id) -> dict:
+        product = ProductData.create_full_product(category_id)
+        return {**product.model_dump(mode="json"), "price": 0}
 
 class TestProductsNegative:
 
@@ -136,11 +184,11 @@ class TestProductsNegative:
 
     def test_access_to_create_product_without_access(self, api_manager, authenticated_user, category_id):
         # Создаем шаблон продукта для дальнейшей его выгрузки на сервер
-        product = ProductData.create_full_product()
+        product = ProductData.create_full_product(category_id)
         products_list = api_manager.products_api.get_products()
 
         # Присваиваем нашему продукту существующий айди категории
-        product["category_id"] = category_id
+        product.category_id = category_id
 
         response = api_manager.products_api.create_product(product, 403)
 
@@ -176,11 +224,11 @@ class TestProductsNegative:
 
     def test_invalid_body_of_product(self, api_manager, authenticated_admin, category_id):
         # Тут создали обычный товар
-        product = ProductData.create_full_product()
-        product["category_id"] = category_id
+        product = ProductData.create_full_product(category_id)
+        product.category_id = category_id
 
         # А тут уже задаем неправильный параметр в тело
-        product["stock"] = -1
+        product.stock = -1
 
         response = api_manager.products_api.create_product(product, 422)
 
@@ -190,8 +238,8 @@ class TestProductsNegative:
         )
 
     def test_create_product_without_token(self, api_manager, category_id):
-        product = ProductData.create_full_product()
-        product["category_id"] = category_id
+        product = ProductData.create_full_product(category_id)
+        product.category_id = category_id
 
         response = api_manager.products_api.create_product(product, 401)
         assert response.json(), (
@@ -200,8 +248,9 @@ class TestProductsNegative:
         )
 
     def test_create_product_with_invalid_category(self, api_manager, authenticated_admin):
-        product = ProductData.create_full_product()
-        product["category_id"] = str(uuid.uuid4())
+        invalid_category_id = uuid.uuid4()
+        product = ProductData.create_full_product(invalid_category_id)
+
 
         response = api_manager.products_api.create_product(product, 404)
 
@@ -230,3 +279,25 @@ def test_filter_out_of_stock(api_manager):
 
     items = response.json()["items"]
     assert all(item["stock"] == 0 for item in items)
+
+@pytest.mark.parametrize(
+    "field, value, expected_type",
+    [
+        ("sku", "AZ 001 с пробелами", "string_pattern_mismatch"),
+        ("name", "", "string_too_short"),
+        ("stock", -1, "greater_than_equal"),
+        ("price", "1000001", "less_than_equal"),
+    ],
+)
+
+@pytest.mark.usefixtures("authenticated_admin")
+def test_model_rejects_bad_field(field, value, expected_type, category_id, api_manager):
+    data = ProductData.create_full_product(category_id).model_dump()
+
+    data[field] = value
+
+    with pytest.raises(ValidationError) as exc_info:
+        ProductRequest(**data)
+
+    errors = exc_info.value.errors()
+    assert any(error["type"] == expected_type for error in errors)
