@@ -5,8 +5,8 @@ class CartAPI(CustomRequester):
     """API для получения инфорации о категориях"""
     CART_ENDPOINT = "/api/v1/cart"
 
-    def __init__(self, session):
-        super().__init__(session, base_url=PRODUCT_URL)
+    def __init__(self, session, base_url=PRODUCT_URL):
+        super().__init__(session, base_url)
 
     def get_cart(self, expected_status=200):
         return self.send_request("GET", self.CART_ENDPOINT, expected_status=expected_status)

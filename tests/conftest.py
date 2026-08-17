@@ -11,6 +11,9 @@ from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
 from models.users import RegisteredUser, UserResponse
 from models.products import ProductResponse
 from uuid import UUID
+from api.products_api import ProductsAPI
+from config.mock import MOCK_URL
+from mocks.wiremock_admin import WireMockAdmin
 
 
 @pytest.fixture(scope="session")
@@ -174,3 +177,24 @@ def db_guard(db):
         "Количество строк в базе данных"
         "не совпало с тем, что было до тестов"
     )
+
+
+@pytest.fixture
+def wiremock():
+    """Чистый WireMock перед каждым тестом: свои стабы, свой журнал запросов."""
+    admin = WireMockAdmin()
+
+    if not admin.is_running():
+        pytest.skip(f"WireMock не отвечает на {MOCK_URL} - тесты с моками пропускаем")
+
+    admin.reset()
+    yield admin
+    admin.session.close()
+
+
+@pytest.fixture
+def mock_products_api(wiremock):
+    """Наш обычный ProductsAPI, только смотрит он не на стенд, а в мок."""
+    session = requests.Session()
+    yield ProductsAPI(session, base_url=MOCK_URL)
+    session.close()

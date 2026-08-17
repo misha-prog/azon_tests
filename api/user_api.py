@@ -5,8 +5,8 @@ class UserAPI(CustomRequester):
     """API для получения и обновления инфорации о пользователе"""
     ME_ENDPOINT = "/api/v1/users/me"
 
-    def __init__(self, session):
-        super().__init__(session, base_url=AUTH_URL)
+    def __init__(self, session, base_url=AUTH_URL):
+        super().__init__(session, base_url)
 
     def get_user_info(self, expected_status=200):
         return self.send_request("GET", self.ME_ENDPOINT, expected_status=expected_status)

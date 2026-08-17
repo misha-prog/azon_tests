@@ -6,8 +6,8 @@ class ProductsAPI(CustomRequester):
     PRODUCTS_ENDPOINT = "/api/v1/products"
     CATEGORIES_ENDPOINT = "/api/v1/categories"
 
-    def __init__(self, session):
-        super().__init__(session, base_url=PRODUCT_URL)
+    def __init__(self, session, base_url=PRODUCT_URL):
+        super().__init__(session, base_url)
 
     def get_products(self, params=None, expected_status=200):
         return self.send_request(
@@ -17,11 +17,12 @@ class ProductsAPI(CustomRequester):
             expected_status=expected_status,
         )
 
-    def get_product(self, product_id, expected_status=200):
+    def get_product(self, product_id, expected_status=200, timeout=10):
         return self.send_request(
             "GET",
             f"{self.PRODUCTS_ENDPOINT}/{product_id}",
             expected_status=expected_status,
+            timeout=timeout,
         )
 
     def get_categories(self, params=None, expected_status=200):
