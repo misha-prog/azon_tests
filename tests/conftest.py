@@ -4,8 +4,10 @@ import pytest
 
 from api.api_manager import ApiManager
 from data.products import ProductData
+from data.review import ReviewData
 from data.users import UserData
 from db.db_manager import DBManager
+from models.reviews import ReviewResponse
 from utils.data_generator import DataGenerator
 from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
 from models.users import RegisteredUser, UserResponse
@@ -198,3 +200,11 @@ def mock_products_api(wiremock):
     session = requests.Session()
     yield ProductsAPI(session, base_url=MOCK_URL)
     session.close()
+
+@pytest.fixture
+def created_review(api_manager, created_product, admin_manager):
+    review = ReviewData.create_full_review()
+
+    leaved_review = api_manager.reviews_api.leave_review(created_product.id, review)
+    extracted_review = ReviewResponse.model_validate(leaved_review.json())
+    yield extracted_review

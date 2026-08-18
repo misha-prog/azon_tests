@@ -7,6 +7,7 @@ from uuid import UUID
 
 from data.products import ProductData
 from models.products import ProductResponse, ProductsPage, ProductRequest
+from utils.marks import requires_admin
 
 
 class TestProductsPositive:
@@ -197,6 +198,7 @@ class TestProductsNegative:
             f"'FORBIDDEN', а получили {response.text}"
         )
 
+    @requires_admin
     def test_delete_seed_product(self, api_manager, authenticated_admin):
         # Смотрим на все товары и выбираем первый для удаления
         products_list = api_manager.products_api.get_products()
@@ -214,6 +216,7 @@ class TestProductsNegative:
             f"ожидали увидеть ошибку 'SEED_PROTECTED', но пришло: {response.text}"
         )
 
+    @requires_admin
     def test_get_invalid_category(self, api_manager, authenticated_admin):
         response = api_manager.products_api.get_products(params={"category_id": str(uuid.uuid4())}, expected_status=200)
 
@@ -222,6 +225,7 @@ class TestProductsNegative:
             f"ожидали увидеть непустой список, а получили {response.text}"
         )
 
+    @requires_admin
     def test_invalid_body_of_product(self, api_manager, authenticated_admin, category_id):
         # Тут создали обычный товар
         product = ProductData.create_full_product(category_id)
@@ -247,6 +251,7 @@ class TestProductsNegative:
             f"но получили ошибку : {response.text}"
         )
 
+    @requires_admin
     def test_create_product_with_invalid_category(self, api_manager, authenticated_admin):
         invalid_category_id = uuid.uuid4()
         product = ProductData.create_full_product(invalid_category_id)
@@ -270,8 +275,20 @@ class TestProductsNegative:
             f"но получили следующее сообщение : {response.text}"
         )
 
+    @requires_admin
+    def test_stock_update_with_famous_bug(self, created_product, admin_manager, api_manager, authenticated_user):
+        admin_manager.products_api.update_product(created_product.id, {"stock": 0})
 
-@pytest.mark.xfail(reason="AZON-142: фильтр in_stock=false не отбирает товары без остатка")
+        response = api_manager.products_api.get_products({"in_stock": True, "size": 100})
+
+        for item in response.json()["items"]:
+            assert str(created_product.id) != item["id"], (
+                "Созданный товар как то оказался"
+                "в выдаче, хотя мы задали ему сток 0"
+            )
+
+
+@pytest.mark.xfail(reason="AZON-142: фильтр in_stock=false не отбирает товары без остатка", strict=True)
 def test_filter_out_of_stock(api_manager):
     response = api_manager.products_api.get_products(
         params={"in-stock": False, "size": 100}

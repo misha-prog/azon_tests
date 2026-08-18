@@ -37,3 +37,27 @@ class DataGenerator:
     @staticmethod
     def generate_stock():
         return fake.random_int(min=1, max=1000, step=10)
+
+    @staticmethod
+    def generate_text():
+        return fake.text(max_nb_chars=2000)
+
+    @staticmethod
+    def generate_rating():
+        return fake.random_int(min=1, max=5)
+
+    @staticmethod
+    def generate_or_none_text():
+        a = fake.random_int(min=1, max=100)
+        if a < 50:
+            return fake.text(max_nb_chars=2000)
+        else:
+            return None
+
+    @staticmethod
+    def generate_or_none_rating():
+        a = fake.random_int(min=1, max=100)
+        if a < 50:
+            return fake.random_int(min=1, max=5)
+        else:
+            return None
