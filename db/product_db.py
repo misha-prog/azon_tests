@@ -46,3 +46,57 @@ class ProductDB(DBClient):
         )
         return cnt["total"]
 
+    def top_5_products(self):
+        return self.fetch_all(
+            """
+            SELECT count(r.id) AS reviews, round(avg(r.rating), 2) AS average_rating
+            FROM products p
+            JOIN reviews r ON r.product_id = p.id
+            GROUP BY p.name
+            ORDER BY reviews DESC, p.name
+            LIMIT 5
+            """
+        )
+
+    def product_reviews(self, product_id):
+        return self.fetch_one(
+            """
+            SELECT count(r.id) AS reviews, round(avg(r.rating), 2) AS avg
+            FROM products p
+            JOIN reviews r ON r.product_id = p.id
+            WHERE p.id = %s
+            """,
+            (product_id,)
+        )
+
+    def get_moderation_record(self, review_id):
+        return self.fetch_one(
+            """
+                SELECT action, actor_user_id, payload
+                FROM audit_log
+                WHERE action = 'REVIEW_MODERATE_DELETE' AND entity_id = %s
+                """,
+            (str(review_id),),
+        )
+
+    def get_review_from_product(self, review_id):
+        return self.fetch_one(
+            """
+            SELECT r.text, r.rating
+            FROM reviews r
+            WHERE r.id = %s
+            """,
+            (review_id,)
+        )
+
+    def count_reviews(self, product_id):
+        cnt =  self.fetch_one(
+            """
+            SELECT count(r.id) AS total
+            FROM products p
+            JOIN reviews r ON r.product_id = p.id
+            WHERE p.id = %s
+            """,
+            (product_id,)
+        )
+        return cnt["total"]

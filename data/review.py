@@ -25,3 +25,10 @@ class ReviewData:
         # намеренно словарь: модель с extra="forbid" такое просто не соберёт,
         # а проверить надо ответ сервиса
         return {"rating": 5, "text": "Пробуем лишнее поле", "user_id": "no-such-field"}
+
+    @staticmethod
+    def update_review_text() -> ReviewUpdateRequest:
+        return ReviewUpdateRequest(
+            rating=None,
+            text=DataGenerator.generate_text()
+        )

@@ -58,6 +58,19 @@ def resp_of_upd():
       "created_at": "2026-08-17T05:22:55.027Z"
 }
 
+def review():
+    return {
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "product_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "user_name": "string",
+        "rating": 0,
+        "text": "string",
+        "is_seed": True,
+        "created_at": "2026-08-20T04:01:45.822Z",
+        "updated_at": "2026-08-20T04:01:45.822Z"
+    }
+
 
 class ProductStubs:
     """Стабы Product API: метод возвращает готовый мэппинг для WireMock."""
@@ -162,6 +175,30 @@ class ProductStubs:
          "request": {"method": "GET", "urlPath": f"/api/v1/products/{product_id}"},
          "response": {"status": 404, "jsonBody": {"error": {"code": "PRODUCT_NOT_FOUND"}}}}
         return [a,b,c]
+
+    @staticmethod
+    def get_reviews_list(product_id):
+        return {
+            "request": {
+                "method": "GET",
+                "urlPath": f"{PRODUCTS_ENDPOINT}/{product_id}/reviews",
+            },
+            "response": {
+                "status": 200,
+                "jsonBody": review(),
+            },
+        }
+
+    @staticmethod
+    def server_error(product_id):
+        return {
+            "request": {"method": "GET", "urlPath": f"{PRODUCTS_ENDPOINT}/{product_id}"},
+            "response": {
+                "status": 500,
+                "headers": JSON_HEADERS,
+                "jsonBody": error_body("INTERNAL_ERROR", "Internal server error"),
+            },
+        }
 
 class AuthStubs:
 

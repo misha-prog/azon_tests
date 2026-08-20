@@ -91,7 +91,7 @@ def authenticated_admin(api_manager):
     user_data = UserData.registration_data_admin()
     register_response = api_manager.auth_api.register_user(user_data)
 
-    # Проверка на то что роль менеджера задалась
+    # Проверка на то что роль админа задалась
     assert register_response.json()["role"] == "ADMIN", (
         f"Инвайт-код не сработал, "
         f" роль {register_response.json()['role']}, проверь .env")
@@ -171,6 +171,27 @@ def admin_manager():
     session.close()
 
 @pytest.fixture(scope="function")
+def manager_manager():
+    session = requests.Session()
+    manager = ApiManager(session)
+
+    manager_data = UserData.registration_data_manager()
+    register_response = manager.auth_api.register_user(manager_data)
+
+    assert register_response.json()["role"] == "MANAGER", (
+        f"не сработал инвайт код,"
+        f"роль {register_response.json()["role"]}, проверь .env"
+    )
+
+    manager.auth_api.authenticate(
+        (manager_data.email, manager_data.password)
+    )
+
+    yield manager
+
+    session.close()
+
+@pytest.fixture(scope="function")
 def db_guard(db):
     before_tests = db.product.count_all_products()
     yield before_tests
@@ -208,3 +229,10 @@ def created_review(api_manager, created_product, admin_manager):
     leaved_review = api_manager.reviews_api.leave_review(created_product.id, review)
     extracted_review = ReviewResponse.model_validate(leaved_review.json())
     yield extracted_review
+
+@pytest.fixture
+def other_user(api_manager):
+    user_data = UserData.registration_data()
+    register_response = api_manager.auth_api.register_user(user_data)
+    api_manager.auth_api.authenticate((user_data.email, user_data.password))
+    return {**user_data.model_dump(), "id": register_response.json()["id"]}
