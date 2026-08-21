@@ -7,6 +7,7 @@ from data.products import ProductData
 from data.review import ReviewData
 from data.users import UserData
 from db.db_manager import DBManager
+from models.orders import OrderResponse
 from models.reviews import ReviewResponse
 from utils.data_generator import DataGenerator
 from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
@@ -236,3 +237,18 @@ def other_user(api_manager):
     register_response = api_manager.auth_api.register_user(user_data)
     api_manager.auth_api.authenticate((user_data.email, user_data.password))
     return {**user_data.model_dump(), "id": register_response.json()["id"]}
+
+@pytest.fixture
+def order(api_manager, authenticated_user, created_product):
+    cart_item = {
+        "product_id": str(created_product.id),
+        "quantity": 1,
+    }
+
+    api_manager.cart_api.add_item(cart_item)
+    response = api_manager.payment_api.checkout()
+    created_order = OrderResponse.model_validate(response.json())
+
+    assert created_order.status == "AWAITING_PAYMENT"
+
+    return created_order

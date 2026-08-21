@@ -1,6 +1,6 @@
 from decimal import Decimal
 from datetime import datetime
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, ConfigDict
 from uuid import UUID
 
 
@@ -28,3 +28,16 @@ class OrdersPage(BaseModel):
     page: int
     size: int
     pages: int
+
+class CardBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    card_number: str = Field(pattern=r"^\d{16}$")
+    card_holder: str = Field(max_length=50)
+    exp_month: int = Field(le=12, ge=1)
+    exp_year: int = Field(ge=2026, le=2060)
+    cvc: str = Field(pattern=r"^\d{3}$")
+
+class PaymentResponse(BaseModel):
+    payment_id: UUID
+    status: str
+    order_status: str

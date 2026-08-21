@@ -61,3 +61,19 @@ class DataGenerator:
             return fake.random_int(min=1, max=5)
         else:
             return None
+
+    @staticmethod
+    def generate_holder_name():
+        return fake.name().upper()
+
+    @staticmethod
+    def generate_exp_month():
+        return fake.random_int(min=1, max=12)
+
+    @staticmethod
+    def generate_exp_year():
+        return fake.random_int(min=2026, max=2060)
+
+    @staticmethod
+    def generate_cvc():
+        return f"{fake.random_int(min=0,max=999):03d}"
