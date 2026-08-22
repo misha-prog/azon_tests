@@ -2,6 +2,8 @@ import pytest
 
 from data.orders import OrdersData
 
+pytestmark = [pytest.mark.payment]
+
 class TestPayment:
 
     def test_check_bin(self, authenticated_user, api_manager):
@@ -29,6 +31,7 @@ class TestPayment:
             f"а вот сам ответ получения заказа - {response_order.text}"
         )
 
+@pytest.mark.negative
 class TestPaymentNegative:
 
     def test_invalid_card_decline_payment(self, api_manager, authenticated_user, order):
@@ -57,4 +60,20 @@ class TestPaymentNegative:
         assert response.json()["error"]["code"] == "INVALID_ORDER_STATUS", (
             f"Тут должна была быть ошибка об невалидном статусе заказа, "
             f"но получили следующее - {response.text}"
+        )
+
+    def test_foreign_order_is_not_accessible(self, authenticated_user, api_manager, order, other_user):
+        response = other_user.payment_api.get_order(order.id, 404)
+
+        assert response.json()["error"]["code"] == "ORDER_NOT_FOUND", (
+            f"Ждали что заказ не найдется у другого пользователя, "
+            f"но в итоге получили - {response.text}"
+        )
+
+    def test_empty_cart_cant_checkout(self, authenticated_user, api_manager):
+        response = api_manager.payment_api.checkout(expected_status=400)
+
+        assert response.json()["error"]["code"] == "CART_EMPTY", (
+            f"Должна была выйти ошибка об оформлении пустой корзины, "
+            f"но вышло следующее сообщение - {response.text}"
         )

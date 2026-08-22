@@ -3,6 +3,7 @@ import pytest
 
 
 from api.api_manager import ApiManager
+from api.payment_api import PaymentAPI
 from data.products import ProductData
 from data.review import ReviewData
 from data.users import UserData
@@ -224,6 +225,12 @@ def mock_products_api(wiremock):
     session.close()
 
 @pytest.fixture
+def mock_payment_api():
+    session = requests.Session()
+    yield PaymentAPI(session, base_url=MOCK_URL)
+    session.close()
+
+@pytest.fixture
 def created_review(api_manager, created_product, admin_manager):
     review = ReviewData.create_full_review()
 
@@ -232,11 +239,18 @@ def created_review(api_manager, created_product, admin_manager):
     yield extracted_review
 
 @pytest.fixture
-def other_user(api_manager):
+def other_user():
+    session = requests.Session()
+    other_manager = ApiManager(session)
+
     user_data = UserData.registration_data()
-    register_response = api_manager.auth_api.register_user(user_data)
-    api_manager.auth_api.authenticate((user_data.email, user_data.password))
-    return {**user_data.model_dump(), "id": register_response.json()["id"]}
+    register_response = other_manager.auth_api.register_user(user_data)
+    other_manager.auth_api.authenticate((user_data.email, user_data.password))
+
+    try:
+        yield other_manager
+    finally:
+        session.close()
 
 @pytest.fixture
 def order(api_manager, authenticated_user, created_product):

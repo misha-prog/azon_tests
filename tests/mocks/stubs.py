@@ -3,6 +3,7 @@ import uuid
 PRODUCTS_ENDPOINT = "/api/v1/products"
 AUTH_ENDPOINT = "/api/v1/auth"
 USERS_ENDPOINT = "/api/v1/users"
+PAYMENT_ENDPOINT = "/api/v1/orders"
 JSON_HEADERS = {"Content-Type": "application/json"}
 
 
@@ -69,6 +70,13 @@ def review():
         "is_seed": True,
         "created_at": "2026-08-20T04:01:45.822Z",
         "updated_at": "2026-08-20T04:01:45.822Z"
+    }
+
+def response_of_pay():
+    return {
+      "payment_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "status": "string",
+      "order_status": "string"
     }
 
 
@@ -238,5 +246,20 @@ class AuthStubs:
             "response": {
                 "status": 200,
                 "jsonBody": resp_of_upd(),
+            },
+        }
+
+class PaymentStubs:
+    @staticmethod
+    def get_response_of_slow_service(order_id):
+        return {
+            "request": {
+                "method": "POST",
+                "urlPath": f"{PAYMENT_ENDPOINT}/{order_id}/pay"
+            },
+            "response": {
+                "status": 503,
+                "jsonBody": response_of_pay(),
+                "fixedDelayMilliseconds": 10000,
             },
         }

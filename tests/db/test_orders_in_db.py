@@ -1,4 +1,8 @@
+import pytest
+
 from data.products import ProductData
+
+pytestmark = [pytest.mark.db]
 
 class TestOrdersInDB:
 

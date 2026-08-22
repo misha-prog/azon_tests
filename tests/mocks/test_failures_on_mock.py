@@ -7,6 +7,7 @@ from decimal import Decimal
 from models.products import ProductsPage
 from tests.mocks.stubs import ProductStubs
 
+pytestmark = [pytest.mark.mock]
 
 def test_server_error_message_is_readable(wiremock, mock_products_api):
     product_id = str(uuid.uuid4())

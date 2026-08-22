@@ -2,17 +2,15 @@ import pytest
 from decimal import Decimal
 from uuid import UUID
 
-from tests.conftest import db_guard
 from utils.marks import requires_db, requires_admin
 
 from data.products import ProductData
 
-pytestmark = [pytest.mark.db, pytest.mark.products, requires_db, requires_admin]
+pytestmark = [pytest.mark.db, pytest.mark.products, requires_db, requires_admin, pytest.mark.usefixtures("db_guard")]
 
 
 class TestProductsInDB:
 
-    @pytest.mark.usefixtures("db_guard")
     def test_created_product_is_saved_in_db(self, created_product, db):
         row = db.product.get_product(created_product.id)
 
@@ -23,7 +21,6 @@ class TestProductsInDB:
         assert row["deleted_at"] is None
         assert row["is_seed"] is False
 
-    @pytest.mark.usefixtures("db_guard")
     def test_product_author_lives_in_another_database(self, created_product, db):
         # created_by приходит из JWT: id пользователя, которого хранит другой сервис
         product = db.product.get_product(created_product.id)
@@ -33,7 +30,7 @@ class TestProductsInDB:
         assert author is not None, "автор товара должен существовать в azon_auth"
         assert author["role"] in ("MANAGER", "ADMIN")
 
-    @pytest.mark.usefixtures("db_guard")
+
     def test_deleted_product_stays_in_db(self, api_manager, admin_manager, authenticated_user,created_product, db):
         admin_manager.products_api.delete_product(created_product.id)
 
@@ -46,7 +43,7 @@ class TestProductsInDB:
         assert row is not None, "soft delete: строка должна остаться в базе"
         assert row["deleted_at"] is not None, "у удалённого товара проставляется deleted_at"
 
-    @pytest.mark.usefixtures("db_guard")
+
     def test_deleted_products_swap_status(self, admin_manager, db, category_id):
         base_cnt_products = db.product.count_active_products(category_id)
         product = admin_manager.products_api.create_product(ProductData.create_full_product(category_id))
@@ -60,7 +57,7 @@ class TestProductsInDB:
 
         assert base_cnt_products == cnt_after_del, "количество товаров после удаления лишнего не совпало"
 
-    @pytest.mark.usefixtures("db_guard")
+
     def test_price_of_product_at_moment_of_add(self, admin_manager, category_id, db, authenticated_user, api_manager, created_product):
         api_manager.cart_api.add_item(ProductData.cart_item_data(created_product.id, quantity=2))
         new_price = ProductData.change_price()
@@ -77,7 +74,7 @@ class TestProductsInDB:
         assert cart["items"][0]["price_changed"] is True
 
 
-    @pytest.mark.usefixtures("db_guard")
+
     def test_is_api_and_db_equal(self, db, authenticated_admin, api_manager, category_id):
         products_in_api = api_manager.products_api.get_products(params={"size": 100})
         total_in_api = len(products_in_api.json()["items"])
@@ -103,7 +100,7 @@ class TestProductsInDB:
         api_manager.products_api.delete_product(product.json()["id"])
 
 
-    @pytest.mark.usefixtures("db_guard")
+
     def test_bin_plus_db(self, admin_manager, authenticated_user, db, category_id, api_manager, created_product):
         product_id = str(created_product.id)
         api_manager.cart_api.add_item({"product_id": product_id, "quantity": 3})
@@ -114,7 +111,7 @@ class TestProductsInDB:
         assert items_in_cart[0]["price_at_add"] == Decimal(created_product.price)
 
 
-    @pytest.mark.usefixtures("db_guard")
+
     def test_order_plus_join(self, created_product, db, api_manager, authenticated_user):
         api_manager.cart_api.add_item({"product_id": str(created_product.id), "quantity": 1})
 
