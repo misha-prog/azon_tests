@@ -1,9 +1,9 @@
 import uuid
+from decimal import Decimal
+from uuid import UUID
 
 import pytest
-from decimal import Decimal
 from pydantic import ValidationError
-from uuid import UUID
 
 from data.products import ProductData
 from models.products import ProductResponse, ProductsPage, ProductRequest
@@ -44,7 +44,7 @@ class TestProductsPositive:
 
         product = ProductResponse.model_validate(response_id.json())
 
-        assert UUID(response_id.json()["id"]) == product_id, (
+        assert product.id == product_id == UUID(response_id.json()["id"]), (
             f"Проверили что получили тот же товар что и отдали, "
             f"но что-то пошло не так и получили товар с айди: {product_id}"
         )
@@ -69,7 +69,9 @@ class TestProductsPositive:
 
     def test_max_price_product(self, api_manager, authenticated_user):
         # Получаем список отсортированных товаров
-        products_list = api_manager.products_api.get_products(params={"sort_by": "price", "order": "desc","size": 50})
+        products_list = api_manager.products_api.get_products(
+            params={"sort_by": "price", "order": "desc", "size": 50}
+        )
 
         # Проверяем что первый товар и правда дороже всех остальных
         max_price = float(products_list.json()["items"][0]["price"])
@@ -103,7 +105,7 @@ class TestProductsPositive:
         # Удаляем только что созданный объект
 
         is_accessible = api_manager.products_api.get_product(product_id)
-        assert is_accessible.json()["is_available"] == False, (
+        assert is_accessible.json()["is_available"] is False, (
             f"Проверяли, что товар недоступен, но получили "
             f"{is_accessible.text}"
         )
@@ -114,7 +116,9 @@ class TestProductsPositive:
 
         response = api_manager.products_api.create_product(product)
         product_id = response.json()["id"]
-        api_manager.products_api.update_price(product_id, new_price={"price": 99999}, expected_status=200)
+        api_manager.products_api.update_price(
+            product_id, new_price={"price": 99999}, expected_status=200
+        )
 
         updated_product_price = api_manager.products_api.get_product(product_id)
         api_manager.products_api.delete_product(product_id)
@@ -176,7 +180,9 @@ class TestProductsPositive:
 class TestProductsNegative:
 
     def test_get_product_by_invalid_id(self, api_manager):
-        response = api_manager.products_api.get_product(f"{str(uuid.uuid4())}", expected_status=404)
+        response = api_manager.products_api.get_product(
+            str(uuid.uuid4()), expected_status=404
+        )
 
         assert response.json()["error"]["code"] == "PRODUCT_NOT_FOUND", (
             f"Хотели получить ошибку о том что не нашли товар "
@@ -186,8 +192,6 @@ class TestProductsNegative:
     def test_access_to_create_product_without_access(self, api_manager, authenticated_user, category_id):
         # Создаем шаблон продукта для дальнейшей его выгрузки на сервер
         product = ProductData.create_full_product(category_id)
-        products_list = api_manager.products_api.get_products()
-
         # Присваиваем нашему продукту существующий айди категории
         product.category_id = category_id
 
@@ -204,7 +208,7 @@ class TestProductsNegative:
         products_list = api_manager.products_api.get_products()
         product = dict()
         for item in products_list.json()["items"]:
-            if item["is_seed"] == True:
+            if item["is_seed"] is True:
                 product = item
                 break
 
@@ -218,7 +222,9 @@ class TestProductsNegative:
 
     @requires_admin
     def test_get_invalid_category(self, api_manager, authenticated_admin):
-        response = api_manager.products_api.get_products(params={"category_id": str(uuid.uuid4())}, expected_status=200)
+        response = api_manager.products_api.get_products(
+            params={"category_id": str(uuid.uuid4())}, expected_status=200
+        )
 
         assert response.json()["items"] == [], (
             f"Пытались получить товар с несуществующей категорией, "
@@ -256,7 +262,6 @@ class TestProductsNegative:
         invalid_category_id = uuid.uuid4()
         product = ProductData.create_full_product(invalid_category_id)
 
-
         response = api_manager.products_api.create_product(product, 404)
 
         assert response.json()["error"]["code"] == "CATEGORY_NOT_FOUND", (
@@ -276,7 +281,9 @@ class TestProductsNegative:
         )
 
     @requires_admin
-    def test_stock_update_with_famous_bug(self, created_product, admin_manager, api_manager, authenticated_user):
+    def test_stock_update_with_famous_bug(
+        self, created_product, admin_manager, api_manager, authenticated_user
+    ):
         admin_manager.products_api.update_product(created_product.id, {"stock": 0})
 
         response = api_manager.products_api.get_products({"in_stock": True, "size": 100})
@@ -297,6 +304,7 @@ def test_filter_out_of_stock(api_manager):
     items = response.json()["items"]
     assert all(item["stock"] == 0 for item in items)
 
+
 @pytest.mark.parametrize(
     "field, value, expected_type",
     [
@@ -306,7 +314,6 @@ def test_filter_out_of_stock(api_manager):
         ("price", "1000001", "less_than_equal"),
     ],
 )
-
 @pytest.mark.usefixtures("authenticated_admin")
 def test_model_rejects_bad_field(field, value, expected_type, category_id, api_manager):
     data = ProductData.create_full_product(category_id).model_dump()

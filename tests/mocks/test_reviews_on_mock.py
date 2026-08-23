@@ -5,16 +5,17 @@
 3. журнал запросов: при обновлении отзыва только с текстом в теле уезжает одно поле - это проверка exclude_none из Темы 2.
 
 """
-import uuid
-import requests
-import pytest
 import json
+import uuid
+
+import pytest
+import requests
 
 from api.reviews_api import ReviewsAPI
 from config.mock import MOCK_URL
 from data.review import ReviewData
-from tests.mocks.stubs import ProductStubs
-from stubs import review
+from models.reviews import ReviewsPage
+from tests.mocks.stubs import ProductStubs, review
 
 
 JSON_HEADERS = {"Content-Type": "application/json"}
@@ -23,21 +24,22 @@ pytestmark = [pytest.mark.mock]
 
 
 def test_reviews_stub(wiremock):
-    session = requests.Session()
     product_id = str(uuid.uuid4())
     wiremock.add_stub(ProductStubs.get_reviews_list(product_id))
 
-    ReviewsAPI(session, base_url="http://localhost:8090").check_reviews(product_id)
+    with requests.Session() as session:
+        response = ReviewsAPI(session, base_url=MOCK_URL).check_reviews(product_id)
 
-    response = wiremock.find_requests({
-        "method": "GET",
-        "urlPath": f"/api/v1/products/{product_id}/reviews"
-    })[0]
+    page = ReviewsPage.model_validate(response.json())
 
-    assert response["body"] is not None, (
-        f"Тело запроса пусто либо содержит не то,"
-        f"{response['body']}"
-    )
+    assert page.total == 1
+    assert page.page == 1
+    assert page.size == 20
+    assert page.pages == 1
+    assert len(page.items) == 1
+    assert str(page.items[0].product_id) == product_id
+    assert 1 <= page.items[0].rating <= 5
+
 
 def test_code_500_readable(wiremock, mock_products_api):
     product_id = str(uuid.uuid4())
@@ -48,6 +50,7 @@ def test_code_500_readable(wiremock, mock_products_api):
 
     assert "ожидали статус 200, получили 500" in str(error.value)
     assert "INTERNAL_ERROR" in str(error.value)
+
 
 def test_update_sends_only_filled_fields(wiremock):
     wiremock.add_stub(
@@ -62,5 +65,7 @@ def test_update_sends_only_filled_fields(wiremock):
     with requests.Session() as session:
         ReviewsAPI(session, base_url=MOCK_URL).change_review(review_id, update)
 
-    sent = wiremock.find_requests({"method": "PATCH", "urlPath": f"/api/v1/reviews/{review_id}"})[0]
+    sent = wiremock.find_requests(
+        {"method": "PATCH", "urlPath": f"/api/v1/reviews/{review_id}"}
+    )[0]
     assert json.loads(sent["body"]) == {"text": update.text}

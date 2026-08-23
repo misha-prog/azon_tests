@@ -1,23 +1,24 @@
-import requests
-import pytest
+from uuid import UUID
 
+import pytest
+import requests
 
 from api.api_manager import ApiManager
 from api.payment_api import PaymentAPI
+from api.products_api import ProductsAPI
+from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
+from config.db import DB_PASSWORD
+from config.mock import MOCK_URL
 from data.products import ProductData
 from data.review import ReviewData
 from data.users import UserData
 from db.db_manager import DBManager
 from models.orders import OrderResponse
-from models.reviews import ReviewResponse
-from utils.data_generator import DataGenerator
-from config.credentials import ADMIN_INVITE_CODE, MANAGER_INVITE_CODE
-from models.users import RegisteredUser, UserResponse
 from models.products import ProductResponse
-from uuid import UUID
-from api.products_api import ProductsAPI
-from config.mock import MOCK_URL
-from mocks.wiremock_admin import WireMockAdmin
+from models.reviews import ReviewResponse
+from models.users import RegisteredUser, UserResponse
+from tests.mocks.wiremock_admin import WireMockAdmin
+from utils.data_generator import DataGenerator
 
 
 @pytest.fixture(scope="session")
@@ -26,10 +27,12 @@ def api_manager():
     yield ApiManager(session)
     session.close()
 
+
 @pytest.fixture(autouse=True)
 def clean_auth_header(api_manager):
     yield
     api_manager.auth_api.session.headers.pop("Authorization", None)
+
 
 @pytest.fixture
 def registered_user(api_manager) -> RegisteredUser:
@@ -56,6 +59,7 @@ def created_product(admin_manager, category_id) -> ProductResponse:
     except AssertionError:
         pass
 
+
 @pytest.fixture(scope="function")
 def authenticated_user(api_manager):
     user_data = UserData.registration_data()
@@ -63,43 +67,42 @@ def authenticated_user(api_manager):
     api_manager.auth_api.authenticate((user_data.email, user_data.password))
     return {**user_data.model_dump(), "id": register_response.json()["id"]}
 
-'''
-@pytest.fixture(scope="function")
-def created_product(api_manager, authenticated_admin, category_id):
-    product = ProductData.create_full_product()
-    product["category_id"] = category_id
-    add_product = api_manager.products_api.create_product(product)
-    created = add_product.json()
-    product_id = created["id"]
-    yield created
-    api_manager.products_api.delete_product(product_id)
-'''
 
 @pytest.fixture(scope="function")
 def authenticated_manager(api_manager):
+    if not MANAGER_INVITE_CODE:
+        pytest.skip("в .env нет INVITE_CODE_MANAGER")
+
     user_data = UserData.registration_data_manager()
     register_response = api_manager.auth_api.register_user(user_data)
 
     # Проверка на то что роль менеджера задалась
     assert register_response.json()["role"] == "MANAGER", (
         f"Инвайт-код не сработал, "
-        f" роль {register_response.json()['role']}, проверь .env")
+        f" роль {register_response.json()['role']}, проверь .env"
+    )
 
     api_manager.auth_api.authenticate((user_data.email, user_data.password))
     return {**user_data.model_dump(), "id": register_response.json()["id"]}
 
+
 @pytest.fixture(scope="function")
 def authenticated_admin(api_manager):
+    if not ADMIN_INVITE_CODE:
+        pytest.skip("в .env нет INVITE_CODE_ADMIN")
+
     user_data = UserData.registration_data_admin()
     register_response = api_manager.auth_api.register_user(user_data)
 
     # Проверка на то что роль админа задалась
     assert register_response.json()["role"] == "ADMIN", (
         f"Инвайт-код не сработал, "
-        f" роль {register_response.json()['role']}, проверь .env")
+        f" роль {register_response.json()['role']}, проверь .env"
+    )
 
     api_manager.auth_api.authenticate((user_data.email, user_data.password))
     return {**user_data.model_dump(), "id": register_response.json()["id"]}
+
 
 @pytest.fixture(scope="function")
 def new_body_product(api_manager):
@@ -108,7 +111,13 @@ def new_body_product(api_manager):
     stock = DataGenerator.generate_stock()
     all_categories = api_manager.products_api.get_categories()
     category_id = all_categories.json()[0]["id"]
-    return {"name": name, "description": description, "stock": stock, "category_id": category_id}
+    return {
+        "name": name,
+        "description": description,
+        "stock": stock,
+        "category_id": category_id,
+    }
+
 
 @pytest.fixture(scope="function")
 def category_id(api_manager):
@@ -116,43 +125,62 @@ def category_id(api_manager):
     category_uuid = response.json()[0]["id"]
     return UUID(category_uuid)
 
-@pytest.mark.smoke
-def test_health(api_manager):
-    ...
-@pytest.mark.skip(reason="AZON-101: экспорт каталока в CSV еще не реализован")
-def test_export_catalog_to_csv():
-    assert False
 
 @pytest.fixture(autouse=True)
 def warn_about_slow(request):
     if request.node.get_closest_marker("slow"):
         print(f"\n[!] {request.node.name} помечен slow - готовьтесь ждать")
 
+
 def pytest_collection_modifyitems(items):
-    """Нет кода админа в .env - пропускаем всё, что просит админскую фикстуру."""
-    if ADMIN_INVITE_CODE:
-        return
-    skip_admin = pytest.mark.skip(reason="в .env нет ADMIN_INVITE_CODE")
+    """Пропускает тесты до запуска фикстур, если нет нужных секретов."""
+    admin_fixtures = {"authenticated_admin", "admin_manager", "created_product"}
+    manager_fixtures = {"authenticated_manager", "manager_manager"}
+    db_fixtures = {"db", "db_guard"}
+
+    skip_admin = pytest.mark.skip(reason="в .env нет INVITE_CODE_ADMIN")
+    skip_manager = pytest.mark.skip(reason="в .env нет INVITE_CODE_MANAGER")
+    skip_db = pytest.mark.skip(reason="в .env нет DB_PASSWORD")
+
     for item in items:
-        if "authenticated_admin" in item.fixturenames:
+        fixture_names = set(item.fixturenames)
+
+        if not ADMIN_INVITE_CODE and fixture_names & admin_fixtures:
             item.add_marker(skip_admin)
+        if not MANAGER_INVITE_CODE and fixture_names & manager_fixtures:
+            item.add_marker(skip_manager)
+        if not DB_PASSWORD and (
+            item.get_closest_marker("db") or fixture_names & db_fixtures
+        ):
+            item.add_marker(skip_db)
+
 
 @pytest.fixture(scope="session")
 def db():
+    if not DB_PASSWORD:
+        pytest.skip("в .env нет DB_PASSWORD")
+
     manager = DBManager()
     yield manager
     manager.close()
 
+
 @pytest.fixture
 def created_order(api_manager, authenticated_user, created_product):
     """Заказ из одного товара: кладём товар в корзину и оформляем заказ."""
-    api_manager.cart_api.add_item(ProductData.cart_item_data(created_product.id))
+    api_manager.cart_api.add_item(
+        ProductData.cart_item_data(created_product.id, quantity=1)
+    )
 
     response = api_manager.payment_api.checkout()
     return response.json()
 
+
 @pytest.fixture(scope="function")
 def admin_manager():
+    if not ADMIN_INVITE_CODE:
+        pytest.skip("в .env нет INVITE_CODE_ADMIN")
+
     session = requests.Session()
     manager = ApiManager(session)
 
@@ -164,16 +192,18 @@ def admin_manager():
         f"роль {register_response.json()['role']}, проверь .env"
     )
 
-    manager.auth_api.authenticate(
-        (admin_data.email, admin_data.password)
-    )
+    manager.auth_api.authenticate((admin_data.email, admin_data.password))
 
     yield manager
 
     session.close()
 
+
 @pytest.fixture(scope="function")
 def manager_manager():
+    if not MANAGER_INVITE_CODE:
+        pytest.skip("в .env нет INVITE_CODE_MANAGER")
+
     session = requests.Session()
     manager = ApiManager(session)
 
@@ -185,13 +215,12 @@ def manager_manager():
         f"роль {register_response.json()["role"]}, проверь .env"
     )
 
-    manager.auth_api.authenticate(
-        (manager_data.email, manager_data.password)
-    )
+    manager.auth_api.authenticate((manager_data.email, manager_data.password))
 
     yield manager
 
     session.close()
+
 
 @pytest.fixture(scope="function")
 def db_guard(db):
@@ -199,8 +228,7 @@ def db_guard(db):
     yield before_tests
     after_tests = db.product.count_all_products()
     assert before_tests == after_tests, (
-        "Количество строк в базе данных"
-        "не совпало с тем, что было до тестов"
+        "Количество строк в базе данных не совпало с тем, что было до тестов"
     )
 
 
@@ -224,19 +252,22 @@ def mock_products_api(wiremock):
     yield ProductsAPI(session, base_url=MOCK_URL)
     session.close()
 
+
 @pytest.fixture
 def mock_payment_api():
     session = requests.Session()
     yield PaymentAPI(session, base_url=MOCK_URL)
     session.close()
 
+
 @pytest.fixture
-def created_review(api_manager, created_product, admin_manager):
+def created_review(api_manager, authenticated_user, created_product):
     review = ReviewData.create_full_review()
 
     leaved_review = api_manager.reviews_api.leave_review(created_product.id, review)
     extracted_review = ReviewResponse.model_validate(leaved_review.json())
     yield extracted_review
+
 
 @pytest.fixture
 def other_user():
@@ -244,13 +275,14 @@ def other_user():
     other_manager = ApiManager(session)
 
     user_data = UserData.registration_data()
-    register_response = other_manager.auth_api.register_user(user_data)
+    other_manager.auth_api.register_user(user_data)
     other_manager.auth_api.authenticate((user_data.email, user_data.password))
 
     try:
         yield other_manager
     finally:
         session.close()
+
 
 @pytest.fixture
 def order(api_manager, authenticated_user, created_product):

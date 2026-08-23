@@ -1,6 +1,10 @@
 import uuid
 
+import pytest
+
 from tests.mocks.stubs import ProductStubs
+
+pytestmark = pytest.mark.mock
 
 
 def test_get_three_stubs_in_one(wiremock, mock_products_api):

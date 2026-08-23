@@ -1,12 +1,11 @@
 import pytest
 
-from tests.conftest import authenticated_user
 from utils.marks import requires_db
 
 pytestmark = [pytest.mark.db, pytest.mark.auth, requires_db]
 
-class TestUserInDB:
 
+class TestUserInDB:
     def test_registered_user_is_saved_in_db(self, registered_user, db):
         row = db.auth.get_user_by_email(registered_user.registration.email)
 

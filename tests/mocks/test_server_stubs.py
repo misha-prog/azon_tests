@@ -1,10 +1,12 @@
 import uuid
 
-from tests.conftest import wiremock
-from tests.mocks.stubs import ProductStubs
+import pytest
 from requests.exceptions import ReadTimeout
 
-import pytest
+from tests.mocks.stubs import ProductStubs
+
+pytestmark = pytest.mark.mock
+
 
 def test_server_error_is_503(wiremock, mock_products_api):
     product_id = str(uuid.uuid4())
@@ -18,8 +20,8 @@ def test_server_error_is_503(wiremock, mock_products_api):
 
 
 def test_timeout_on_server(wiremock, mock_products_api):
-    product_id = uuid.uuid4()
+    product_id = str(uuid.uuid4())
     wiremock.add_stub(ProductStubs.timeout_on_response(product_id))
 
-    with pytest.raises(ReadTimeout) as error:
+    with pytest.raises(ReadTimeout):
         mock_products_api.get_product(product_id, timeout=2)

@@ -1,4 +1,5 @@
 import uuid
+from datetime import date
 
 from faker import Faker
 
@@ -72,8 +73,8 @@ class DataGenerator:
 
     @staticmethod
     def generate_exp_year():
-        return fake.random_int(min=2026, max=2060)
+        return fake.random_int(min=date.today().year + 1, max=2100)
 
     @staticmethod
     def generate_cvc():
-        return f"{fake.random_int(min=0,max=999):03d}"
+        return f"{fake.random_int(min=0, max=999):03d}"

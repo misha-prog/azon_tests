@@ -1,10 +1,11 @@
-from tests.conftest import authenticated_user
-from data.users import UserData
 import pytest
+
+from data.users import UserData
+
 pytestmark = [pytest.mark.users, pytest.mark.regression]
 
-class TestUsers:
 
+class TestUsers:
     def test_get_user_without_token(self, api_manager):
         response = api_manager.user_api.get_user_info(expected_status=401)
 
@@ -13,8 +14,6 @@ class TestUsers:
     def test_get_user_info(self, api_manager, authenticated_user):
         user_data = authenticated_user
         check_user_data = api_manager.user_api.get_user_info()
-
-
         assert user_data["email"] == check_user_data.json()["email"]
         assert check_user_data.json()["role"] == "USER"
 
@@ -38,7 +37,9 @@ class TestUsers:
         response = api_manager.auth_api.login_user(old_credentials, expected_status=401)
         assert response.json()["error"]["code"] == "INVALID_CREDENTIALS"
 
-        new_pass_response = api_manager.auth_api.authenticate((authenticated_user["email"], "aboba123"))
+        new_pass_response = api_manager.auth_api.authenticate(
+            (authenticated_user["email"], "aboba123")
+        )
         assert "access_token" in new_pass_response.json(), (
             f"Новый пароль не подошел и выдало ошибку: {new_pass_response.text}"
         )

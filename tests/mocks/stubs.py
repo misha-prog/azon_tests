@@ -45,38 +45,42 @@ def body_of_test_token():
         "access_token": "test-token",
         "refresh_token": "test-token",
         "token_type": "bearer",
-        "expire_in": 43200
+        "expire_in": 43200,
     }
+
 
 def resp_of_upd():
     return {
-      "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "email": "string",
-      "full_name": "string",
-      "phone": "string",
-      "role": "USER",
-      "is_active": True,
-      "created_at": "2026-08-17T05:22:55.027Z"
-}
+        "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "email": "string",
+        "full_name": "string",
+        "phone": "string",
+        "role": "USER",
+        "is_active": True,
+        "created_at": "2026-08-17T05:22:55.027Z",
+    }
 
-def review():
-    return {
+
+def review(**overrides):
+    body = {
         "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "product_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "user_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
         "user_name": "string",
-        "rating": 0,
+        "rating": 5,
         "text": "string",
         "is_seed": True,
         "created_at": "2026-08-20T04:01:45.822Z",
-        "updated_at": "2026-08-20T04:01:45.822Z"
+        "updated_at": "2026-08-20T04:01:45.822Z",
     }
+    return {**body, **overrides}
+
 
 def response_of_pay():
     return {
-      "payment_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "status": "string",
-      "order_status": "string"
+        "payment_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+        "status": "string",
+        "order_status": "string",
     }
 
 
@@ -113,35 +117,36 @@ class ProductStubs:
                 "urlPath": PRODUCTS_ENDPOINT,
                 "queryParameters": {
                     "page": {"equalTo": "1"},
-                    "size": {"equalTo": "2"}
+                    "size": {"equalTo": "2"},
                 },
             },
             "response": {
                 "status": 200,
                 "headers": JSON_HEADERS,
                 "jsonBody": {
-                    "items": [product_body(str(uuid.uuid4())), product_body(str(uuid.uuid4()), price="1000")],
+                    "items": [
+                        product_body(str(uuid.uuid4())),
+                        product_body(str(uuid.uuid4()), price="1000"),
+                    ],
                     "total": 2,
                     "page": 1,
                     "size": 2,
-                    "pages": 1
+                    "pages": 1,
                 },
             },
         }
-
 
     @staticmethod
     def bad_gateway(product_id):
         return {
             "request": {
                 "method": "GET",
-                "urlPath": f"{PRODUCTS_ENDPOINT}/{product_id}"
+                "urlPath": f"{PRODUCTS_ENDPOINT}/{product_id}",
             },
-
             "response": {
                 "status": 503,
                 "headers": JSON_HEADERS,
-                "jsonBody": error_body("GATEWAY_ERROR", "technical timeout")
+                "jsonBody": error_body("GATEWAY_ERROR", "technical timeout"),
             },
         }
 
@@ -152,7 +157,6 @@ class ProductStubs:
                 "method": "GET",
                 "urlPath": f"{PRODUCTS_ENDPOINT}/{product_id}",
             },
-
             "response": {
                 "status": 200,
                 "headers": JSON_HEADERS,
@@ -161,28 +165,43 @@ class ProductStubs:
             },
         }
 
-
     @staticmethod
     def product_lifecycle(product_id):
-        # 1. пока сценарий в состоянии Started - товар есть
-        a = {"scenarioName": "Жизнь товара",
-         "requiredScenarioState": "Started",
-         "request": {"method": "GET", "urlPath": f"/api/v1/products/{product_id}"},
-         "response": {"status": 200, "jsonBody": {"id": f"{product_id}", "is_available": True}}}
-
-        # 2. DELETE отвечает 204 и переводит сценарий в новое состояние
-        b = {"scenarioName": "Жизнь товара",
-         "requiredScenarioState": "Started",
-         "newScenarioState": "Товар удалён",
-         "request": {"method": "DELETE", "urlPath": f"/api/v1/products/{product_id}"},
-         "response": {"status": 204}}
-
-        # 3. в новом состоянии тот же GET отвечает уже 404
-        c = {"scenarioName": "Жизнь товара",
-         "requiredScenarioState": "Товар удалён",
-         "request": {"method": "GET", "urlPath": f"/api/v1/products/{product_id}"},
-         "response": {"status": 404, "jsonBody": {"error": {"code": "PRODUCT_NOT_FOUND"}}}}
-        return [a,b,c]
+        product_available = {
+            "scenarioName": "Жизнь товара",
+            "requiredScenarioState": "Started",
+            "request": {
+                "method": "GET",
+                "urlPath": f"/api/v1/products/{product_id}",
+            },
+            "response": {
+                "status": 200,
+                "jsonBody": {"id": str(product_id), "is_available": True},
+            },
+        }
+        delete_product = {
+            "scenarioName": "Жизнь товара",
+            "requiredScenarioState": "Started",
+            "newScenarioState": "Товар удалён",
+            "request": {
+                "method": "DELETE",
+                "urlPath": f"/api/v1/products/{product_id}",
+            },
+            "response": {"status": 204},
+        }
+        product_deleted = {
+            "scenarioName": "Жизнь товара",
+            "requiredScenarioState": "Товар удалён",
+            "request": {
+                "method": "GET",
+                "urlPath": f"/api/v1/products/{product_id}",
+            },
+            "response": {
+                "status": 404,
+                "jsonBody": {"error": {"code": "PRODUCT_NOT_FOUND"}},
+            },
+        }
+        return [product_available, delete_product, product_deleted]
 
     @staticmethod
     def get_reviews_list(product_id):
@@ -193,7 +212,14 @@ class ProductStubs:
             },
             "response": {
                 "status": 200,
-                "jsonBody": review(),
+                "headers": JSON_HEADERS,
+                "jsonBody": {
+                    "items": [review(product_id=product_id)],
+                    "total": 1,
+                    "page": 1,
+                    "size": 20,
+                    "pages": 1,
+                },
             },
         }
 
@@ -208,8 +234,8 @@ class ProductStubs:
             },
         }
 
-class AuthStubs:
 
+class AuthStubs:
     @staticmethod
     def get_test_token():
         return {
@@ -220,7 +246,7 @@ class AuthStubs:
             "response": {
                 "status": 200,
                 "jsonBody": body_of_test_token(),
-            }
+            },
         }
 
     @staticmethod
@@ -249,13 +275,14 @@ class AuthStubs:
             },
         }
 
+
 class PaymentStubs:
     @staticmethod
     def get_response_of_slow_service(order_id):
         return {
             "request": {
                 "method": "POST",
-                "urlPath": f"{PAYMENT_ENDPOINT}/{order_id}/pay"
+                "urlPath": f"{PAYMENT_ENDPOINT}/{order_id}/pay",
             },
             "response": {
                 "status": 503,

@@ -1,18 +1,34 @@
 import os
+
 import psycopg
 from psycopg.rows import dict_row
-from dotenv import load_dotenv
 
-load_dotenv()
+from config.db import PRODUCT_DB, conninfo
 
-db_password = os.getenv("DB_PASSWORD")
-conninfo = f"host=db.azon.130-17-2-195.sslip.io port=5432 user=student password={db_password} dbname=azon_product"
 
-with psycopg.connect(conninfo) as connection:
-    result = connection.execute("SELECT sku, price FROM products WHERE sku = %s", ("EL-002",))
-    print(result.fetchone())
+def main():
+    configured_sku = os.getenv("PRODUCT_SKU")
 
-with psycopg.connect(conninfo, row_factory=dict_row) as connection:
-    row = connection.execute("SELECT * FROM products WHERE sku = %s", ("EL-002",)).fetchone()
-    print(row)
-    print(row["name"], row["price"])
+    with psycopg.connect(conninfo(PRODUCT_DB), row_factory=dict_row) as connection:
+        if configured_sku:
+            sku = configured_sku
+        else:
+            latest_product = connection.execute(
+                "SELECT sku FROM products ORDER BY created_at DESC LIMIT 1"
+            ).fetchone()
+            if latest_product is None:
+                raise RuntimeError("В таблице products нет товаров")
+            sku = latest_product["sku"]
+
+        row = connection.execute(
+            "SELECT * FROM products WHERE sku = %s", (sku,)
+        ).fetchone()
+        if row is None:
+            raise RuntimeError(f"Товар с SKU {sku!r} не найден")
+
+        print(row)
+        print(row["name"], row["price"])
+
+
+if __name__ == "__main__":
+    main()

@@ -1,10 +1,13 @@
-import logging
 import json
+import logging
+
 from pydantic import BaseModel
 
 DEFAULT_TIMEOUT = 10
 
 logger = logging.getLogger("azon_tests")
+SECRET_FIELDS = {"password", "old_password", "new_password", "invite_code"}
+
 
 class CustomRequester:
     """Базовый класс всех API-клиентов: отправка запросов и проверка статуса."""
@@ -34,19 +37,35 @@ class CustomRequester:
         self.session.headers.update(headers)
 
     def _mask_without_secrets(self, body):
-        response = json.loads(body)
-        if "password" in response:
-            response["password"] = "***"
-        return json.dumps(response)
+        if isinstance(body, bytes):
+            body = body.decode("utf-8", errors="replace")
 
+        try:
+            payload = json.loads(body) if isinstance(body, str) else body
+        except (json.JSONDecodeError, TypeError):
+            return str(body)
+
+        return json.dumps(self._mask_value(payload), ensure_ascii=False)
+
+    def _mask_value(self, value):
+        if isinstance(value, dict):
+            return {
+                key: "***"
+                if str(key).lower() in SECRET_FIELDS
+                else self._mask_value(item)
+                for key, item in value.items()
+            }
+        if isinstance(value, list):
+            return [self._mask_value(item) for item in value]
+        return value
 
     def _log_request_and_response(self, response):
         request = response.request
         logger.info("--> %s %s", request.method, request.url)
 
         if request.body:
-            secret = self._mask_without_secrets(request.body)
-            logger.info("     тело запроса: %s", secret)
+            masked_body = self._mask_without_secrets(request.body)
+            logger.info("     тело запроса: %s", masked_body)
         logger.info(
             "<-- %s за %.2f c: %s",
             response.status_code,

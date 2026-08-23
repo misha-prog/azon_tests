@@ -1,10 +1,16 @@
 import uuid
 from unittest.mock import MagicMock
 
+import pytest
+
 from api.reviews_api import ReviewsAPI
 from config.hosts import PRODUCT_URL
 
+pytestmark = pytest.mark.mock
+
 REVIEW_ID = uuid.uuid4()
+
+
 def test_delete_review_without_network():
     response = MagicMock()
     response.status_code = 204

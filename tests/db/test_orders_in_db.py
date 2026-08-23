@@ -1,11 +1,12 @@
 import pytest
 
 from data.products import ProductData
+from utils.marks import requires_admin, requires_db
 
-pytestmark = [pytest.mark.db]
+pytestmark = [pytest.mark.db, pytest.mark.payment, requires_db, requires_admin]
+
 
 class TestOrdersInDB:
-
     def test_order_and_items_are_saved_in_db(self, created_order, created_product, db):
         order = db.payment.get_order(created_order["id"])
 
@@ -17,6 +18,7 @@ class TestOrdersInDB:
         assert len(items) == 1
         assert items[0]["product_id"] == created_product.id
         assert items[0]["quantity"] == 1
+        assert items[0]["unit_price"] == created_product.price
         assert items[0]["subtotal"] == created_product.price
 
     def test_order_item_keeps_price_snapshot(
@@ -24,7 +26,6 @@ class TestOrdersInDB:
     ):
         new_price = ProductData.change_price()
 
-        # цена товара меняется уже после оформления заказа
         admin_manager.products_api.update_price(created_product.id, new_price)
 
         product_row = db.product.get_product(created_product.id)

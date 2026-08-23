@@ -12,8 +12,8 @@ class Role(str, Enum):
     MANAGER = "MANAGER"
     ADMIN = " ADMIN"
 
-class RegisterRequest(BaseModel):
 
+class RegisterRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     email: str = Field(max_length=254)
@@ -23,14 +23,12 @@ class RegisterRequest(BaseModel):
     invite_code: str | None = None
 
 class LoginRequest(BaseModel):
-
     model_config = ConfigDict(extra="forbid")
 
     email: str = Field(max_length=254)
     password: str = Field(min_length=8, max_length=72)
 
 class UserResponse(BaseModel):
-
     id: UUID
     email: str
     full_name: str

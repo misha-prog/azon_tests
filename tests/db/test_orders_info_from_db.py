@@ -1,22 +1,14 @@
-from decimal import Decimal
-
 import pytest
 
-pytestmark = [pytest.mark.db, pytest.mark.payment]
+from utils.marks import requires_admin, requires_db
 
-def test_primary_price_and_name_of_product_in_db(api_manager, db, authenticated_user, created_product):
-    product_price = created_product.price
-    product_name = created_product.name
-    product = {
-        "product_id": str(created_product.id),
-        "quantity": 1,
-    }
-    api_manager.cart_api.add_item(product)
+pytestmark = [pytest.mark.db, pytest.mark.payment, requires_db, requires_admin]
 
-    created_product.price = Decimal("1")
-    created_product.name = "abc"
 
-    response = db.product.get_product(created_product.id)
+def test_checkout_saves_product_snapshot(created_order, created_product, db):
+    items = db.payment.get_order_items(created_order["id"])
 
-    assert response["price"] == product_price
-    assert response["name"] == product_name
+    assert len(items) == 1
+    assert items[0]["product_id"] == created_product.id
+    assert items[0]["product_name"] == created_product.name
+    assert items[0]["unit_price"] == created_product.price

@@ -1,12 +1,12 @@
+import pytest
+
 from data.users import UserData
 from models.users import TokenPairResponse
-from tests.conftest import registered_user, api_manager
-import pytest
 
 pytestmark = pytest.mark.auth
 
-class TestAuth:
 
+class TestAuth:
     @pytest.mark.smoke
     def test_register_and_login(self, api_manager):
         user_data = UserData.registration_data()

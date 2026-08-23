@@ -1,6 +1,8 @@
-from pydantic import BaseModel, Field, ConfigDict
-from uuid import UUID
 from datetime import datetime
+from uuid import UUID
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class ReviewCreateRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -32,6 +34,7 @@ class ReviewsPage(BaseModel):
     page: int
     size: int
     pages: int
+
 
 class StrictReviewResponse(ReviewResponse):
     model_config = ConfigDict(extra="forbid")

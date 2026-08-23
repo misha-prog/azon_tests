@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
+from datetime import datetime
 from decimal import Decimal
 from uuid import UUID
-from datetime import datetime
+
+from pydantic import BaseModel, Field
+
 
 class ProductRequest(BaseModel):
     name: str = Field(min_length=1, max_length=200)
@@ -10,6 +12,7 @@ class ProductRequest(BaseModel):
     price: Decimal = Field(gt=0, le=1_000_000)
     stock: int = Field(ge=0, le=1_000_000)
     category_id: UUID
+
 
 class ProductResponse(BaseModel):
     id: UUID
@@ -29,4 +32,3 @@ class ProductsPage(BaseModel):
     page: int
     size: int
     pages: int
-

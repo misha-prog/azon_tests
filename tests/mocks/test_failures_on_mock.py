@@ -1,13 +1,13 @@
 import uuid
+from decimal import Decimal
 
 import pytest
-
-from decimal import Decimal
 
 from models.products import ProductsPage
 from tests.mocks.stubs import ProductStubs
 
 pytestmark = [pytest.mark.mock]
+
 
 def test_server_error_message_is_readable(wiremock, mock_products_api):
     product_id = str(uuid.uuid4())
@@ -16,8 +16,9 @@ def test_server_error_message_is_readable(wiremock, mock_products_api):
     with pytest.raises(AssertionError) as error:
         mock_products_api.get_product(product_id)
 
-    assert "ожидали статус 200, получили 500" in str(error.value)
-    assert "INTERNAL_ERROR" in str(error.value)
+    assert "ожидали статус 200, получили 404" in str(error.value)
+    assert "PRODUCT_NOT_FOUND" in str(error.value)
+
 
 def test_stub_with_fake_products(wiremock, mock_products_api):
     wiremock.add_stub(ProductStubs.product_page_and_size())
