@@ -298,3 +298,13 @@ def order(api_manager, authenticated_user, created_product):
     assert created_order.status == "AWAITING_PAYMENT"
 
     return created_order
+
+
+@pytest.fixture
+def mobile_page(browser, playwright):
+    context = browser.new_context(**playwright.devices["iPhone 13"])
+    page = context.new_page()
+
+    yield page
+
+    context.close()
