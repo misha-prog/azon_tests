@@ -22,3 +22,6 @@ report.html
 *.xlsx
 *.csv
 *.env
+
+
+auth.json

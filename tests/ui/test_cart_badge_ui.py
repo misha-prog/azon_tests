@@ -1,16 +1,25 @@
-from config.hosts import FRONTEND_URL
-from data.users import UserData
+import pytest
 from playwright.sync_api import expect
 
+from pages.cart_page import CartPage
+from pages.catalog_page import CatalogPage
 
-def test_cart_badge_shows_zero(page, api_manager):
-    user = UserData.registration_data()
-    api_manager.auth_api.register_user(user)
+pytestmark = pytest.mark.ui
 
-    page.goto(f"{FRONTEND_URL}/login")
-    page.get_by_test_id("email-input").fill(user.email)
-    page.get_by_test_id("password-input").fill(user.password)
-    page.get_by_test_id("login-submit").click()
 
-    expect(page.get_by_test_id("cart-count")).to_have_text("0")
-    assert False, "Проверяем сохранение trace"
+def test_cart_badge_shows_zero(logged_in_page):
+    catalog_page = CatalogPage(logged_in_page).open()
+
+    expect(catalog_page.header.cart_count).to_have_text("0")
+
+
+def test_product_is_in_cart(logged_in_page, created_product) -> None:
+    catalog_page = CatalogPage(logged_in_page).open()
+    catalog_page.search(created_product.name)
+    catalog_page.add_to_cart(created_product.name)
+
+    expect(catalog_page.header.cart_count).to_have_text("1")
+    catalog_page.header.go_to_cart()
+
+    cart_page = CartPage(logged_in_page)
+    expect(cart_page.item(created_product.name)).to_be_visible()

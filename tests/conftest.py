@@ -2,6 +2,8 @@ from uuid import UUID
 
 import pytest
 import requests
+from playwright.sync_api import expect
+from requests import session
 
 from api.api_manager import ApiManager
 from api.payment_api import PaymentAPI
@@ -17,6 +19,7 @@ from models.orders import OrderResponse
 from models.products import ProductResponse
 from models.reviews import ReviewResponse
 from models.users import RegisteredUser, UserResponse
+from pages.login_page import LoginPage
 from tests.mocks.wiremock_admin import WireMockAdmin
 from utils.data_generator import DataGenerator
 
@@ -300,11 +303,47 @@ def order(api_manager, authenticated_user, created_product):
     return created_order
 
 
+
+@pytest.fixture(scope="session", autouse=True)
+def configure_test_id(playwright):
+    playwright.selectors.set_test_id_attribute("data-testid")
+
+
+@pytest.fixture
+def ui_user(api_manager):
+    registration = UserData.registration_data()
+
+    api_manager.auth_api.register_user(registration)
+
+    return registration
+
+
+def _login_through_ui(page, user):
+    """Вход через форму: одинаковый и для десктопа, и для телефона."""
+    login_page = LoginPage(page).open()
+    login_page.login(user.email, user.password)
+
+    expect(login_page.header.profile_link).to_have_text(user.email)
+    return page
+
+
+@pytest.fixture
+def logged_in_page(page, ui_user):
+    """Вкладка браузера, в которой мы уже вошли в свой аккаунт."""
+    return _login_through_ui(page, ui_user)
+
+
 @pytest.fixture
 def mobile_page(browser, playwright):
+    """Тот же браузер, но притворяется телефоном: размер экрана, User-Agent, касания."""
     context = browser.new_context(**playwright.devices["iPhone 13"])
     page = context.new_page()
 
     yield page
 
     context.close()
+
+
+@pytest.fixture
+def logged_in_mobile_page(mobile_page, ui_user):
+    return _login_through_ui(mobile_page, ui_user)
