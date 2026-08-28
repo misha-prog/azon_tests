@@ -1,5 +1,7 @@
 import re
 
+import allure
+
 from pages.base_page import BasePage
 
 
@@ -36,10 +38,12 @@ class CatalogPage(BasePage):
         self.search_input.fill(text)
         self.apply_button.click()
 
+    @allure.step("Выбираем категорию {name}")
     def choose_category(self, name):
         self.category_select.select_option(label=name)
         self.apply_button.click()
 
+    @allure.step("Сортируем по {label} и по {order}")
     def sort_by(self, label, order="По возрастанию"):
         self.sort_select.select_option(label=label)
         self.order_select.select_option(label=order)

@@ -1,5 +1,6 @@
 from uuid import UUID
 
+import allure
 import pytest
 import requests
 from playwright.sync_api import expect
@@ -347,3 +348,25 @@ def mobile_page(browser, playwright):
 @pytest.fixture
 def logged_in_mobile_page(mobile_page, ui_user):
     return _login_through_ui(mobile_page, ui_user)
+
+
+@pytest.hookimpl(hookwrapper=True)
+def pytest_runtest_makereport(item, call):
+    """Упал тест в браузере - кладём в отчёт скриншот и адрес страницы."""
+    outcome = yield
+    report = outcome.get_result()
+
+    if report.when != "call" or not report.failed:
+        return
+
+    # у API-тестов страницы нет, у мобильных она называется иначе
+    page = item.funcargs.get("mobile_page") or item.funcargs.get("page")
+    if page is None:
+        return
+
+    allure.attach(
+        page.screenshot(full_page=True),
+        name="Скриншот в момент падения",
+        attachment_type=allure.attachment_type.PNG,
+    )
+    allure.attach(page.url, name="Адрес страницы", attachment_type=allure.attachment_type.TEXT)

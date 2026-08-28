@@ -6,3 +6,4 @@ pytest-rerunfailures==16.4
 pydantic==2.13.4
 psycopg[binary]==3.3.4
 pytest-playwright==0.8.0
+allure-pytest==2.16.0

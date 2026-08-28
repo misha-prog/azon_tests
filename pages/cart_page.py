@@ -1,3 +1,5 @@
+import allure
+
 from pages.base_page import BasePage
 
 
@@ -26,11 +28,13 @@ class CartPage(BasePage):
         row.get_by_test_id("cart-item-quantity").fill(str(quantity))
         row.get_by_test_id("cart-item-update").click()
 
+    @allure.step("Очищаем корзину")
     def clear(self):
         self.clear_button.click()
 
     def checkout(self):
         self.checkout_button.click()
 
+    @allure.step("Удаляем товар {name}")
     def remove(self, name):
         self.item(name).get_by_test_id("cart-item-remove").click()
