@@ -23,15 +23,20 @@ class CartPage(BasePage):
         """Строка корзины с нужным товаром."""
         return self.items.filter(has_text=name)
 
+    def item_quantity(self, name):
+        return self.item(name).get_by_test_id("cart-item-quantity")
+
+    @allure.step("Меняем количество товара {name} на {quantity}")
     def set_quantity(self, name, quantity):
         row = self.item(name)
-        row.get_by_test_id("cart-item-quantity").fill(str(quantity))
+        self.item_quantity(name).fill(str(quantity))
         row.get_by_test_id("cart-item-update").click()
 
     @allure.step("Очищаем корзину")
     def clear(self):
         self.clear_button.click()
 
+    @allure.step("Оформляем заказ")
     def checkout(self):
         self.checkout_button.click()
 

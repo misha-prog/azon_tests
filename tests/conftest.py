@@ -4,7 +4,6 @@ import allure
 import pytest
 import requests
 from playwright.sync_api import expect
-from requests import session
 
 from api.api_manager import ApiManager
 from api.payment_api import PaymentAPI
@@ -50,8 +49,8 @@ def registered_user(api_manager) -> RegisteredUser:
 
 
 @pytest.fixture
-def created_product(admin_manager, category_id) -> ProductResponse:
-    product_request = ProductData.create_full_product(category_id)
+def created_product(admin_manager, category) -> ProductResponse:
+    product_request = ProductData.create_full_product(category["id"])
 
     response = admin_manager.products_api.create_product(product_request)
     product = ProductResponse.model_validate(response.json())
@@ -108,7 +107,7 @@ def authenticated_admin(api_manager):
     return {**user_data.model_dump(), "id": register_response.json()["id"]}
 
 
-@pytest.fixture(scope="function")
+@pytest.fixture
 def new_body_product(api_manager):
     name = DataGenerator.generate_name_of_product()
     description = DataGenerator.generate_description()
@@ -123,11 +122,18 @@ def new_body_product(api_manager):
     }
 
 
-@pytest.fixture(scope="function")
-def category_id(api_manager):
-    response = api_manager.products_api.get_categories(params={"size": 1})
-    category_uuid = response.json()[0]["id"]
-    return UUID(category_uuid)
+@pytest.fixture
+def category(api_manager):
+    response = api_manager.products_api.get_categories(
+        params={"size": 1}
+    )
+    category_data = response.json()[0]
+
+    return {
+        "id": UUID(category_data["id"]),
+        "name": category_data["name"],
+    }
+
 
 
 @pytest.fixture(autouse=True)
@@ -359,8 +365,19 @@ def pytest_runtest_makereport(item, call):
     if report.when != "call" or not report.failed:
         return
 
-    # у API-тестов страницы нет, у мобильных она называется иначе
-    page = item.funcargs.get("mobile_page") or item.funcargs.get("page")
+    page = next(
+        (
+            item.funcargs.get(fixture_name)
+            for fixture_name in (
+                "logged_in_mobile_page",
+                "mobile_page",
+                "logged_in_page",
+                "page",
+            )
+            if item.funcargs.get(fixture_name) is not None
+        ),
+        None,
+    )
     if page is None:
         return
 

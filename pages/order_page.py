@@ -1,3 +1,5 @@
+import allure
+
 from pages.base_page import BasePage
 
 SUCCESS_CARD = "4242424242424242"
@@ -27,15 +29,26 @@ class OrderPage(BasePage):
         self.pay_button = page.get_by_test_id("pay-button")
 
         self.processing = page.get_by_test_id("payment-processing")
+        self.payments_table = page.get_by_test_id("payments-table")
         self.payments = page.get_by_test_id("payment-row")
-        self.decline_code = page.get_by_test_id("payment-decline-code")
+        self.payment_status = page.get_by_test_id("payment-status")
+        self.payment_decline_code = page.get_by_test_id("payment-decline-code")
         self.cancel_button = page.get_by_test_id("cancel-order-button")
 
+    @allure.step("Открываем заказ {order_id}")
     def open_by_id(self, order_id):
         self.url = f"/orders/{order_id}"
         return self.open()
 
-    def pay(self, card_number=SUCCESS_CARD, holder="TEST STUDENT", month="12", year="2030", cvc="123"):
+    @allure.step("Оплачиваем заказ картой")
+    def pay(
+        self,
+        card_number=SUCCESS_CARD,
+        holder="TEST STUDENT",
+        month="12",
+        year="2030",
+        cvc="123",
+    ):
         """Оплата картой: номер карты решает, чем всё закончится (см. тестовые карты стенда)."""
         self.card_number.fill(card_number)
         self.card_holder.fill(holder)
@@ -44,5 +57,6 @@ class OrderPage(BasePage):
         self.cvc.fill(cvc)
         self.pay_button.click()
 
+    @allure.step("Отменяем заказ")
     def cancel(self):
         self.cancel_button.click()
