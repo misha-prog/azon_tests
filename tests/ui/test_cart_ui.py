@@ -70,11 +70,15 @@ class TestCartPositive:
 
         cart_page = CartPage(page).open()
         one_item_total = cart_page.total.inner_text()
+        saved_price = cart_page.item_price(created_product.name)
 
         cart_page.set_quantity(created_product.name, 3)
 
         expect(cart_page.item_quantity(created_product.name)).to_have_value("3")
+
         expect(cart_page.total).not_to_have_text(one_item_total)
+
+        assert cart_page.total_price() == saved_price * 3
 
     @allure.story("Содержимое корзины")
     @allure.title("Пустая корзина показывает заглушку")
@@ -123,16 +127,16 @@ class TestCartPositive:
     @allure.title("Количество товара и итоговая сумма пересчитываются")
     @allure.severity(allure.severity_level.CRITICAL)
     def test_count_in_cart_can_be_edited(self, created_product, logged_in_page):
-        catalog_page = CatalogPage(logged_in_page).open()
-
-        catalog_page.search(created_product.name)
-        catalog_page.add_to_cart(created_product.name)
+        put_product_in_cart(logged_in_page, created_product)
 
         cart_page = CartPage(logged_in_page).open()
         quantity_input = cart_page.item_quantity(created_product.name)
         initial_total = cart_page.total.inner_text()
+        saved_price = cart_page.item_price(created_product.name)
 
         cart_page.set_quantity(created_product.name, 10)
 
         expect(quantity_input).to_have_value("10")
         expect(cart_page.total).not_to_have_text(initial_total)
+
+        assert cart_page.total_price() != saved_price

@@ -30,6 +30,7 @@ class TestMobilePositive:
 
         assert mobile_page.viewport_size["width"] == MOBILE_WIDTH
 
+
     @allure.story("Доступ гостя")
     @allure.title("Добавление товара гостем на телефоне открывает вход")
     @allure.severity(allure.severity_level.CRITICAL)
@@ -42,6 +43,7 @@ class TestMobilePositive:
 
         expect(mobile_page).to_have_url(re.compile(r"/login"))
         expect(LoginPage(mobile_page).form).to_be_visible()
+
 
     @allure.story("Адаптивная вёрстка")
     @allure.title("Каталог на телефоне помещается в одну колонку")
@@ -64,6 +66,7 @@ class TestMobilePositive:
             f"против {width['client']} px"
         )
 
+
     @allure.story("Поиск")
     @allure.title("Поиск товара работает на телефоне")
     @allure.severity(allure.severity_level.NORMAL)
@@ -80,6 +83,7 @@ class TestMobilePositive:
 @allure.epic("Витрина AZON")
 @allure.feature("Мобильная версия")
 class TestMobileKnownIssues:
+
     @allure.issue(
         "AZON-207",
         "Шапка авторизованного пользователя не помещается на мобильном экране",

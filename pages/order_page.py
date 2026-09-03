@@ -49,6 +49,10 @@ class OrderPage(BasePage):
         year="2030",
         cvc="123",
     ):
+        allure.dynamic.parameter(
+            "card_number",
+            f"**** **** **** {card_number[-4:]}",
+        )
         """Оплата картой: номер карты решает, чем всё закончится (см. тестовые карты стенда)."""
         self.card_number.fill(card_number)
         self.card_holder.fill(holder)

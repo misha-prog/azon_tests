@@ -13,6 +13,7 @@ pytestmark = pytest.mark.ui
 @allure.epic("Витрина AZON")
 @allure.feature("Заказы и оплата")
 class TestOrdersPositive:
+
     @allure.story("История заказов")
     @allure.title("Новый заказ появляется в списке заказов")
     @allure.severity(allure.severity_level.CRITICAL)
@@ -28,6 +29,8 @@ class TestOrdersPositive:
 
         expect(orders_page.row(order_id)).to_be_visible()
         expect(orders_page.row_status(order_id)).to_have_text("AWAITING_PAYMENT")
+
+
     @allure.story("Статусы заказа")
     @allure.title("Новый заказ ожидает оплаты")
     @allure.severity(allure.severity_level.CRITICAL)
@@ -45,6 +48,7 @@ class TestOrdersPositive:
 
         expect(orders_page.row(order_id)).to_be_visible()
         expect(orders_page.row_status(order_id)).to_have_text("AWAITING_PAYMENT")
+
 
     @pytest.mark.payment
     @allure.story("Оплата")
@@ -78,6 +82,7 @@ class TestOrdersPositive:
 @allure.epic("Витрина AZON")
 @allure.feature("Заказы и оплата")
 class TestOrdersNegative:
+
     @pytest.mark.payment
     @allure.story("Оплата")
     @allure.title("Отказ банка оставляет заказ неоплаченным")

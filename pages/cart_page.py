@@ -1,4 +1,5 @@
 import allure
+from decimal import Decimal
 
 from pages.base_page import BasePage
 
@@ -43,3 +44,31 @@ class CartPage(BasePage):
     @allure.step("Удаляем товар {name}")
     def remove(self, name):
         self.item(name).get_by_test_id("cart-item-remove").click()
+
+    @allure.step("Сохраняем цену товара")
+    def save_price(self, name):
+        row = self.item(name)
+        return row.get_by_test_id("cart-item-price")
+
+    @staticmethod
+    def _parse_price(text: str) -> Decimal:
+        cleaned_text = (
+            text.replace("Итого:", "")
+            .replace("₽", "")
+            .replace("\xa0", "")
+            .replace(" ", "")
+            .strip()
+        )
+        return Decimal(cleaned_text)
+
+    @allure.step("Сохраняем цену товара")
+    def item_price(self, name: str) -> Decimal:
+        price_text = self.item(name).get_by_test_id(
+            "cart-item-price"
+        ).inner_text()
+
+        return self._parse_price(price_text)
+
+    @allure.step("Забираем итог со страницы")
+    def total_price(self) -> Decimal:
+        return self._parse_price(self.total.inner_text())

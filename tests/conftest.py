@@ -57,10 +57,8 @@ def created_product(admin_manager, category) -> ProductResponse:
 
     yield product
 
-    try:
-        admin_manager.products_api.delete_product(product.id)
-    except AssertionError:
-        pass
+
+    admin_manager.products_api.delete_product(product.id)
 
 
 @pytest.fixture(scope="function")
@@ -133,7 +131,6 @@ def category(api_manager):
         "id": UUID(category_data["id"]),
         "name": category_data["name"],
     }
-
 
 
 @pytest.fixture(autouse=True)
@@ -308,7 +305,6 @@ def order(api_manager, authenticated_user, created_product):
     assert created_order.status == "AWAITING_PAYMENT"
 
     return created_order
-
 
 
 @pytest.fixture(scope="session", autouse=True)

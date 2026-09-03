@@ -13,6 +13,7 @@ pytestmark = [pytest.mark.ui, pytest.mark.products]
 @allure.epic("Витрина AZON")
 @allure.feature("Каталог")
 class TestCatalogPositive:
+
     @allure.story("Отображение каталога")
     @allure.title("Каталог показывает созданный товар")
     @allure.severity(allure.severity_level.CRITICAL)
@@ -23,6 +24,7 @@ class TestCatalogPositive:
         expect(catalog_page.title).to_have_text("Каталог")
         expect(catalog_page.total).to_contain_text("Найдено товаров")
         expect(catalog_page.card(created_product.name)).to_be_visible()
+
 
     @allure.story("Фильтрация")
     @allure.title("Фильтр категории показывает товар выбранной категории")
@@ -36,6 +38,7 @@ class TestCatalogPositive:
         expect(catalog_page.selected_category).to_have_text(category["name"])
         expect(catalog_page.card(created_product.name)).to_be_visible()
 
+
     @allure.story("Сортировка")
     @allure.title("Товары сортируются по возрастанию цены")
     @allure.severity(allure.severity_level.NORMAL)
@@ -48,6 +51,7 @@ class TestCatalogPositive:
             f"Получили: {prices}"
         )
 
+
     @allure.story("Пагинация")
     @allure.title("Из каталога можно перейти на вторую страницу")
     @allure.severity(allure.severity_level.NORMAL)
@@ -57,6 +61,7 @@ class TestCatalogPositive:
 
         expect(page).to_have_url(re.compile(r".*page=2.*"))
         expect(catalog_page.page_link(2)).to_be_visible()
+
 
     @allure.story("Доступ гостя")
     @allure.title("Добавление товара гостем переводит на страницу входа")
@@ -69,6 +74,7 @@ class TestCatalogPositive:
         expect(page).to_have_url(re.compile(r"/login"))
         expect(LoginPage(page).form).to_be_visible()
 
+
     @allure.story("Поиск")
     @allure.title("Поиск находит созданный через API товар")
     @allure.severity(allure.severity_level.CRITICAL)
@@ -78,6 +84,7 @@ class TestCatalogPositive:
 
         expect(catalog_page.card(created_product.name)).to_be_visible()
         expect(catalog_page.cards).to_have_count(1)
+
 
     @allure.story("Фильтрация")
     @allure.title("Поиск и категория совместно фильтруют каталог")
@@ -91,6 +98,7 @@ class TestCatalogPositive:
         expect(catalog_page.cards).to_have_count(1)
         expect(catalog_page.card(created_product.name)).to_be_visible()
         expect(catalog_page.selected_category).to_have_text(category["name"])
+
 
     @allure.story("Добавление в корзину")
     @allure.title("Товар добавляется в корзину из каталога")
