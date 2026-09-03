@@ -21,7 +21,7 @@ class DataGenerator:
 
     @staticmethod
     def generate_name_of_product():
-        return fake.word().capitalize()
+        return f"{fake.word().capitalize()}-{uuid.uuid4().hex[:8]}"
 
     @staticmethod
     def generate_sku():
@@ -37,7 +37,7 @@ class DataGenerator:
 
     @staticmethod
     def generate_stock():
-        return fake.random_int(min=1, max=1000, step=10)
+        return fake.random_int(min=10, max=1000, step=10)
 
     @staticmethod
     def generate_text():

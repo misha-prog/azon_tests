@@ -1,3 +1,5 @@
+import allure
+
 from pages.base_page import BasePage
 
 
@@ -13,7 +15,15 @@ class LoginPage(BasePage):
         self.submit_button = page.get_by_test_id("login-submit")
         self.error = page.get_by_test_id("login-error")
 
+    @allure.step("Входим в аккаунт {email}")
     def login(self, email, password):
+        allure.dynamic.parameter("email", email)
+        allure.dynamic.parameter(
+            "password",
+            "***",
+            mode=allure.parameter_mode.MASKED,
+        )
+
         self.email_input.fill(email)
         self.password_input.fill(password)
         self.submit_button.click()

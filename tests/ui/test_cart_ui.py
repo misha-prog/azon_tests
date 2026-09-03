@@ -1,24 +1,21 @@
-import pytest
 import allure
+import pytest
 from playwright.sync_api import expect
 
-from models.orders import OrdersPage
-from pages import catalog_page
+from data.users import UserData
 from pages.cart_page import CartPage
 from pages.catalog_page import CatalogPage
-from config.hosts import FRONTEND_URL
-from data.users import UserData
+from pages.login_page import LoginPage
 from pages.order_page import OrderPage
 
 pytestmark = [pytest.mark.ui, pytest.mark.payment]
 
 
 def login(page, user):
-    page.goto(f"{FRONTEND_URL}/login")
-    page.get_by_test_id("email-input").fill(user.email)
-    page.get_by_test_id("password-input").fill(user.password)
-    page.get_by_test_id("login-submit").click()
-    expect(page.get_by_test_id("nav-profile")).to_have_text(user.email)
+    login_page = LoginPage(page).open()
+    login_page.login(user.email, user.password)
+    expect(login_page.header.profile_link).to_have_text(user.email)
+
 
 def put_product_in_cart(page, product):
     catalog_page = CatalogPage(page).open()
@@ -26,10 +23,10 @@ def put_product_in_cart(page, product):
     catalog_page.add_to_cart(product.name)
     expect(catalog_page.header.cart_count).to_have_text("1")
 
+
 @allure.epic("Витрина AZON")
 @allure.feature("Корзина")
-class TestCartUI:
-
+class TestCartPositive:
     @allure.story("Содержимое корзины")
     @allure.title("В корзине виден только что добавленный товар")
     @allure.severity(allure.severity_level.CRITICAL)
@@ -46,9 +43,11 @@ class TestCartUI:
         expect(cart_page.item(created_product.name)).to_be_visible()
 
     @allure.story("Добавление товара")
-    @allure.title("Кнопка <В корзину> показывает тост и обновляет бейдж")
+    @allure.title("Кнопка В корзину показывает тост и обновляет бейдж")
     @allure.severity(allure.severity_level.CRITICAL)
-    def test_add_to_cart_shows_toast_and_updates_badges(self, page, api_manager, created_product):
+    def test_add_to_cart_shows_toast_and_updates_badges(
+        self, page, api_manager, created_product
+    ):
         user = UserData.registration_data()
         api_manager.auth_api.register_user(user)
         login(page, user)
@@ -69,15 +68,17 @@ class TestCartUI:
         login(page, user)
         put_product_in_cart(page, created_product)
 
-        page.get_by_test_id("nav-cart").click()
-        row = page.get_by_test_id("cart-item").filter(has_text=created_product.name)
-        one_item_total=page.get_by_test_id("cart-total").inner_text()
+        cart_page = CartPage(page).open()
+        one_item_total = cart_page.total.inner_text()
+        saved_price = cart_page.item_price(created_product.name)
 
-        row.get_by_test_id("cart-item-quantity").fill("3")
-        row.get_by_test_id("cart-item-update").click()
+        cart_page.set_quantity(created_product.name, 3)
 
-        expect(row.get_by_test_id("cart-item-quantity")).to_have_value("3")
-        assert page.get_by_test_id("cart-total").inner_text() != one_item_total
+        expect(cart_page.item_quantity(created_product.name)).to_have_value("3")
+
+        expect(cart_page.total).not_to_have_text(one_item_total)
+
+        assert cart_page.total_price() == saved_price * 3
 
     @allure.story("Содержимое корзины")
     @allure.title("Пустая корзина показывает заглушку")
@@ -87,13 +88,13 @@ class TestCartUI:
         api_manager.auth_api.register_user(user)
         login(page, user)
 
-        page.goto(f"{FRONTEND_URL}/cart")
+        cart_page = CartPage(page).open()
 
-        expect(page.get_by_test_id("cart-empty")).to_be_visible()
-        expect(page.get_by_test_id("checkout-button")).to_have_count(0)
+        expect(cart_page.empty).to_be_visible()
+        expect(cart_page.checkout_button).to_have_count(0)
 
     @allure.story("Содержимое корзины")
-    @allure.title("Очистка корзины оставляет корзину пустой")
+    @allure.title("Удаление товара оставляет корзину пустой")
     @allure.severity(allure.severity_level.NORMAL)
     def test_removed_product_leaves_cart_empty(self, logged_in_page, created_product):
         catalog_page = CatalogPage(logged_in_page).open()
@@ -109,10 +110,10 @@ class TestCartUI:
         expect(cart_page.empty).to_be_visible()
         expect(cart_page.items).to_have_count(0)
 
-    @allure.story("Фичи с заказом")
-    @allure.title("Заказа может быть отменен")
+    @allure.story("Заказы")
+    @allure.title("Созданный заказ можно отменить")
     @allure.severity(allure.severity_level.CRITICAL)
-    def test_order_can_be_cancelled(self, logged_in_page, created_product, page):
+    def test_order_can_be_cancelled(self, logged_in_page, created_product):
         put_product_in_cart(logged_in_page, created_product)
 
         CartPage(logged_in_page).open().checkout()
@@ -121,3 +122,21 @@ class TestCartUI:
 
         expect(order_page.flash).to_have_text("Заказ отменён")
         expect(order_page.status).to_have_text("CANCELLED")
+
+    @allure.story("Содержимое корзины")
+    @allure.title("Количество товара и итоговая сумма пересчитываются")
+    @allure.severity(allure.severity_level.CRITICAL)
+    def test_count_in_cart_can_be_edited(self, created_product, logged_in_page):
+        put_product_in_cart(logged_in_page, created_product)
+
+        cart_page = CartPage(logged_in_page).open()
+        quantity_input = cart_page.item_quantity(created_product.name)
+        initial_total = cart_page.total.inner_text()
+        saved_price = cart_page.item_price(created_product.name)
+
+        cart_page.set_quantity(created_product.name, 10)
+
+        expect(quantity_input).to_have_value("10")
+        expect(cart_page.total).not_to_have_text(initial_total)
+
+        assert cart_page.total_price() != saved_price

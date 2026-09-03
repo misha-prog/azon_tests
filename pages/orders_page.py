@@ -1,3 +1,5 @@
+import allure
+
 from pages.base_page import BasePage
 
 
@@ -14,5 +16,9 @@ class OrdersPage(BasePage):
     def row(self, order_id):
         return self.rows.filter(has_text=str(order_id)[:8])
 
+    def row_status(self, order_id):
+        return self.row(order_id).get_by_test_id("order-status")
+
+    @allure.step("Открываем первый заказ")
     def open_first(self):
         self.rows.first.get_by_test_id("order-link").click()

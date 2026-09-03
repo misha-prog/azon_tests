@@ -1,3 +1,4 @@
+import allure
 from playwright.sync_api import Page
 
 from config.hosts import FRONTEND_URL
@@ -17,6 +18,7 @@ class BasePage:
 
         self.title = page.get_by_test_id("page-title")
 
+    @allure.step("Открываем страницу")
     def open(self):
         self.page.goto(f"{FRONTEND_URL}{self.url}")
         return self
